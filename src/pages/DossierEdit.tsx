@@ -247,6 +247,32 @@ export default function DossierEdit() {
       }
       resultId = data.id;
       setDossierId(data.id);
+
+      // Insert any parties that were extracted before the dossier was saved
+      if (pendingExtractedParties.length > 0) {
+        const insertedParties: Partie[] = [];
+        for (const p of pendingExtractedParties) {
+          const { data: inserted, error: pErr } = await supabase
+            .from("parties")
+            .insert({
+              dossier_id: data.id,
+              nom: (p.nom as string) || "",
+              prenom: (p.prenom as string) || "",
+              type_partie: ((p.type_partie as string) || "joueur") as TypePartie,
+              club: (p.club as string) || "",
+              est_mis_en_cause: (p.est_mis_en_cause as boolean) || false,
+              role_dans_incident: (p.role_dans_incident as string) || "",
+              numero_licence: (p.numero_licence as string) || "",
+            })
+            .select()
+            .single();
+          if (!pErr && inserted) insertedParties.push(inserted);
+        }
+        if (insertedParties.length > 0) {
+          setParties((prev) => [...prev, ...insertedParties]);
+        }
+        setPendingExtractedParties([]);
+      }
     }
 
     setSaving(false);
