@@ -91,12 +91,14 @@ serve(async (req) => {
       .eq("id", userId)
       .single();
 
-    const district = profile?.district || "Non renseigné";
-    const ligue = profile?.ligue || "Non renseigné";
+    const district = profile?.district || null;
+    const ligue = profile?.ligue || null;
+    const districtLabel = district || "Non renseigné";
+    const ligueLabel = ligue || "Non renseigné";
 
     // Build user message
     let userMessage = `DOSSIER D'INSTRUCTION\n\n`;
-    userMessage += `District : ${district}\nLigue : ${ligue}\n\n`;
+    userMessage += `District : ${districtLabel}\nLigue : ${ligueLabel}\n\n`;
     userMessage += `INFORMATIONS DU MATCH :\n`;
     userMessage += `- Date : ${infos_match.date_match || "Non renseignée"}\n`;
     userMessage += `- Compétition : ${infos_match.competition || "Non renseignée"}\n`;
@@ -179,7 +181,7 @@ serve(async (req) => {
       userMessage += `\nCONTEXTE SUPPLÉMENTAIRE DE L'INSTRUCTEUR :\n${contexte}\n`;
     }
 
-    userMessage += `\n*District : ${district} | Ligue : ${ligue}*`;
+    userMessage += `\n*District : ${districtLabel} | Ligue : ${ligueLabel}*`;
 
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiKey) {
@@ -223,6 +225,8 @@ serve(async (req) => {
           match_threshold: 0.65,
           match_count: 15,
           filter_source: null,
+          filter_district: district,
+          filter_ligue: ligue,
         });
 
         if (ragResults && ragResults.length > 0) {

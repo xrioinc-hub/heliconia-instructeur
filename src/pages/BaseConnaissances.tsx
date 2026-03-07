@@ -33,7 +33,7 @@ interface IndexedDoc {
 }
 
 export default function BaseConnaissances() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [source, setSource] = useState<SourceReglement>("fff");
   const [titre, setTitre] = useState("");
@@ -113,7 +113,13 @@ export default function BaseConnaissances() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("index-reglement", {
-        body: { texte, source, titre_document: titre },
+        body: {
+          texte,
+          source,
+          titre_document: titre,
+          district: profile?.district || null,
+          ligue: profile?.ligue || null,
+        },
       });
 
       if (error) throw error;

@@ -101,7 +101,7 @@ serve(async (req) => {
       );
     }
 
-    const { texte, source, titre_document } = await req.json();
+    const { texte, source, titre_document, district, ligue } = await req.json();
 
     if (!texte || !source || !titre_document) {
       return new Response(
@@ -133,6 +133,8 @@ serve(async (req) => {
         contenu: chunk,
         embedding: JSON.stringify(embeddings[j]),
         user_id: user.id,
+        district: source === "district" ? (district || null) : null,
+        ligue: source === "ligue" || source === "district" ? (ligue || null) : null,
       }));
 
       const { error: insertError } = await supabaseAdmin
