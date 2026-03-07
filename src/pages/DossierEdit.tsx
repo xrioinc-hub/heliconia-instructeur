@@ -421,6 +421,7 @@ export default function DossierEdit() {
 
       // Auto-add parties (avoid duplicates by matching nom+prenom)
       if (ext.parties && Array.isArray(ext.parties) && ext.parties.length > 0) {
+        const targetDossierId = dossierIdOverride ?? dossierId;
         const existingKeys = new Set(parties.map((p) => `${(p.nom||"").toLowerCase().trim()}_${(p.prenom||"").toLowerCase().trim()}`));
         const filteredParties = ext.parties.filter((p: Record<string, unknown>) => {
           const key = `${((p.nom as string)||"").toLowerCase().trim()}_${((p.prenom as string)||"").toLowerCase().trim()}`;
@@ -428,7 +429,7 @@ export default function DossierEdit() {
         });
 
         if (filteredParties.length > 0) {
-          if (dossierId) {
+          if (targetDossierId) {
             // Dossier already saved — insert directly
             const newParties: Partie[] = [];
             for (const p of filteredParties) {
