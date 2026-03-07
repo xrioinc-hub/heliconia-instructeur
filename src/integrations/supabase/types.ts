@@ -206,8 +206,10 @@ export type Database = {
           article_reference: string | null
           contenu: string
           created_at: string
+          district: string | null
           embedding: string | null
           id: string
+          ligue: string | null
           metadata: Json | null
           source: Database["public"]["Enums"]["source_reglement"]
           titre_document: string
@@ -217,8 +219,10 @@ export type Database = {
           article_reference?: string | null
           contenu: string
           created_at?: string
+          district?: string | null
           embedding?: string | null
           id?: string
+          ligue?: string | null
           metadata?: Json | null
           source: Database["public"]["Enums"]["source_reglement"]
           titre_document: string
@@ -228,8 +232,10 @@ export type Database = {
           article_reference?: string | null
           contenu?: string
           created_at?: string
+          district?: string | null
           embedding?: string | null
           id?: string
+          ligue?: string | null
           metadata?: Json | null
           source?: Database["public"]["Enums"]["source_reglement"]
           titre_document?: string
@@ -267,22 +273,41 @@ export type Database = {
         }
         Returns: boolean
       }
-      match_reglements: {
-        Args: {
-          filter_source?: Database["public"]["Enums"]["source_reglement"]
-          match_count?: number
-          match_threshold?: number
-          query_embedding: string
-        }
-        Returns: {
-          article_reference: string
-          contenu: string
-          id: string
-          similarity: number
-          source: Database["public"]["Enums"]["source_reglement"]
-          titre_document: string
-        }[]
-      }
+      match_reglements:
+        | {
+            Args: {
+              filter_source?: Database["public"]["Enums"]["source_reglement"]
+              match_count?: number
+              match_threshold?: number
+              query_embedding: string
+            }
+            Returns: {
+              article_reference: string
+              contenu: string
+              id: string
+              similarity: number
+              source: Database["public"]["Enums"]["source_reglement"]
+              titre_document: string
+            }[]
+          }
+        | {
+            Args: {
+              filter_district?: string
+              filter_ligue?: string
+              filter_source?: Database["public"]["Enums"]["source_reglement"]
+              match_count?: number
+              match_threshold?: number
+              query_embedding: string
+            }
+            Returns: {
+              article_reference: string
+              contenu: string
+              id: string
+              similarity: number
+              source: Database["public"]["Enums"]["source_reglement"]
+              titre_document: string
+            }[]
+          }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
