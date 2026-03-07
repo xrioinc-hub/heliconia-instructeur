@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,10 +43,12 @@ export default function Rapport() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [dossier, setDossier] = useState<Dossier | null>(null);
   const [parties, setParties] = useState<Partie[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [profile, setProfile] = useState<{ district: string | null; ligue: string | null } | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -65,9 +68,13 @@ export default function Rapport() {
       setParties(p || []);
       const { data: docs } = await supabase.from("documents").select("*").eq("dossier_id", id);
       setDocuments(docs || []);
+      if (user) {
+        const { data: prof } = await supabase.from("profiles").select("district, ligue").eq("id", user.id).single();
+        setProfile(prof);
+      }
     };
     load();
-  }, [id]);
+  }, [id, user]);
 
   const copyReport = () => {
     if (dossier?.rapport_ia) {
@@ -132,7 +139,7 @@ export default function Rapport() {
 
   return (
     <AppLayout>
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="no-print grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left column - 35% */}
         <div className="lg:col-span-4 space-y-4">
           <Card>
@@ -303,6 +310,112 @@ export default function Rapport() {
               )}
             </CardContent>
           </Card>
+        </div>
+      </div>
+
+      {/* ============================================================
+          LAYOUT D'IMPRESSION — style PV District de Football
+          Caché à l'écran, affiché uniquement lors de l'impression
+          ============================================================ */}
+      <div id="print-layout">
+        {/* EN-TÊTE */}
+        <div className="pv-header">
+          <div className="pv-logo-box">
+            <div className="pv-logo-inner">
+              {profile?.district
+                ? profile.district.split(" ").filter(w => w.length > 2).map(w => w[0].toUpperCase()).slice(0, 3).join("")
+                : "FFF"}
+            </div>
+          </div>
+          <div className="pv-header-center">
+            <div className="pv-district-name">{profile?.district || "District"}</div>
+            <div className="pv-ligue-label">{profile?.ligue ? `${profile.ligue} · ` : ""}de Football</div>
+          </div>
+          <div className="pv-header-right">
+            <div className="pv-ref-label">Réf. {dossier.reference}</div>
+            <div className="pv-date-label">
+              Le {new Date().toLocaleDateString("fr-FR")}
+            </div>
+          </div>
+        </div>
+
+        <div className="pv-divider" />
+
+        {/* BANNIÈRE TITRE */}
+        <div className="pv-title-banner">
+          <div className="pv-title-line1">
+            {(profile?.district || "DISTRICT").toUpperCase()}
+          </div>
+          <div className="pv-title-line2">COMMISSION DE DISCIPLINE ET DE L'ÉTHIQUE</div>
+          <div className="pv-title-line3">RAPPORT D'INSTRUCTION — {dossier.reference}</div>
+        </div>
+
+        {/* BOX MATCH */}
+        <div className="pv-match-banner">
+          {dossier.date_match && (
+            <div className="pv-match-date">
+              Journée du {new Date(dossier.date_match).toLocaleDateString("fr-FR")}
+            </div>
+          )}
+          {dossier.competition && (
+            <div className="pv-match-comp">{dossier.competition}</div>
+          )}
+          <div className="pv-match-teams">
+            {dossier.equipe_domicile} — {dossier.equipe_exterieur}
+            {dossier.score ? ` (${dossier.score})` : ""}
+          </div>
+          {dossier.lieu_match && (
+            <div className="pv-match-detail">Lieu : {dossier.lieu_match}</div>
+          )}
+          {(dossier.arbitre_prenom || dossier.arbitre_nom) && (
+            <div className="pv-match-detail">
+              Arbitre : {[dossier.arbitre_prenom, dossier.arbitre_nom].filter(Boolean).join(" ")}
+            </div>
+          )}
+        </div>
+
+        {/* PARTIES IMPLIQUÉES */}
+        {parties.length > 0 && (
+          <div className="pv-parties-section">
+            <div className="pv-section-underline-title">Parties impliquées</div>
+            {parties.map((p) => (
+              <div key={p.id} className="pv-partie-line">
+                ❖{" "}
+                <strong>{p.prenom} {p.nom}</strong>
+                {" — "}{TYPE_PARTIE_LABELS[p.type_partie]}, club&nbsp;: {p.club || "—"}
+                {p.est_mis_en_cause ? " — MIS EN CAUSE" : ""}
+                {p.role_dans_incident ? ` — Rôle : ${p.role_dans_incident}` : ""}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* CORPS DU RAPPORT */}
+        <div className="pv-rapport-body">
+          {dossier.rapport_ia ? (
+            <ReactMarkdown>{dossier.rapport_ia}</ReactMarkdown>
+          ) : (
+            <p><em>Aucun rapport généré.</em></p>
+          )}
+        </div>
+
+        {/* AVERTISSEMENT IA */}
+        <div className="pv-disclaimer-print">
+          Rapport d'instruction généré par intelligence artificielle le{" "}
+          {new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}.{" "}
+          Ce document doit être validé, complété et signé par l'instructeur désigné avant transmission à la Commission.
+        </div>
+
+        {/* SIGNATURES */}
+        <div className="pv-signature-row">
+          <div className="pv-signature-box">
+            <div className="pv-signature-title">Secrétaire de séance</div>
+            <div className="pv-signature-space" />
+          </div>
+          <div className="pv-signature-box">
+            <div className="pv-signature-title">Instructeur désigné</div>
+            <div className="pv-signature-space" />
+          </div>
         </div>
       </div>
 
