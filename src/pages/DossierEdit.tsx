@@ -226,7 +226,14 @@ export default function DossierEdit() {
         continue;
       }
 
-      const storagePath = `${user.id}/${currentId}/${Date.now()}-${file.name}`;
+      // Sanitize filename: remove special chars that Supabase Storage rejects
+      const sanitizedName = file.name
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
+        .replace(/[°º#%&{}\\<>*?/$!'":@+`|=]/g, "") // remove special chars
+        .replace(/\(|\)/g, "") // remove parentheses
+        .replace(/\s+/g, "_") // replace spaces with underscores
+        .replace(/_+/g, "_"); // collapse multiple underscores
+      const storagePath = `${user.id}/${currentId}/${Date.now()}-${sanitizedName}`;
       const { error: uploadError } = await supabase.storage
         .from("dossier-documents")
         .upload(storagePath, file);
