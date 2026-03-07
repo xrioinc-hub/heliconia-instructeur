@@ -32,9 +32,9 @@ async function extractText(file: File): Promise<string> {
   if (file.name.endsWith(".pdf")) {
     try {
       const pdfjsLib = await import("pdfjs-dist");
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
       let text = "";
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
@@ -42,7 +42,8 @@ async function extractText(file: File): Promise<string> {
         text += content.items.map((item: any) => item.str).join(" ") + "\n";
       }
       return text;
-    } catch {
+    } catch (e) {
+      console.error("PDF extraction error:", e);
       return "[Erreur d'extraction PDF]";
     }
   }
@@ -225,7 +226,14 @@ export default function DossierEdit() {
         continue;
       }
 
-      const storagePath = `${user.id}/${currentId}/${Date.now()}-${file.name}`;
+      // Sanitize filename: remove special chars that Supabase Storage rejects
+      const sanitizedName = file.name
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
+        .replace(/[°º#%&{}\\<>*?/$!'":@+`|=]/g, "") // remove special chars
+        .replace(/\(|\)/g, "") // remove parentheses
+        .replace(/\s+/g, "_") // replace spaces with underscores
+        .replace(/_+/g, "_"); // collapse multiple underscores
+      const storagePath = `${user.id}/${currentId}/${Date.now()}-${sanitizedName}`;
       const { error: uploadError } = await supabase.storage
         .from("dossier-documents")
         .upload(storagePath, file);
