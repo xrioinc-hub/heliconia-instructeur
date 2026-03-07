@@ -124,8 +124,27 @@ serve(async (req) => {
       return (priority[a.type] ?? 4) - (priority[b.type] ?? 4);
     });
 
+    // Markers that indicate extraction failed on the client — never send these to the AI.
+    const EXTRACTION_ERROR_MARKERS = [
+      "[Erreur d'extraction PDF]",
+      "[Erreur d'extraction DOCX]",
+      "[Erreur OCR",
+      "[Aucun texte extrait par OCR]",
+    ];
+
+    const failedDocs: string[] = [];
+    let hasValidDoc = false;
+
     for (const doc of sortedDocs) {
-      const docText = doc.contenu || "";
+      const docText = (doc.contenu || "").trim();
+
+      // Skip documents where extraction failed and record them for the warning.
+      const isError = !docText || EXTRACTION_ERROR_MARKERS.some((marker) => docText.startsWith(marker));
+      if (isError) {
+        failedDocs.push(doc.type);
+        continue;
+      }
+
       if (totalChars + docText.length > MAX_CHARS) {
         const remaining = MAX_CHARS - totalChars;
         if (remaining > 500) {
@@ -135,6 +154,15 @@ serve(async (req) => {
       }
       userMessage += `\n--- ${doc.type} ---\n${docText}\n`;
       totalChars += docText.length;
+      hasValidDoc = true;
+    }
+
+    if (failedDocs.length > 0) {
+      userMessage += `\n⚠️ AVERTISSEMENT : Les documents suivants n'ont pas pu être extraits et sont absents de cette analyse : ${failedDocs.join(", ")}. Mentionne cette lacune dans le rapport et indique quels documents manquants seraient nécessaires pour compléter l'instruction.\n`;
+    }
+
+    if (!hasValidDoc) {
+      userMessage += `\n⚠️ AUCUN document n'a pu être extrait. Indique clairement dans le rapport que l'instruction ne peut pas être réalisée faute de documents lisibles, et liste les documents qui devraient être fournis (feuille de match, rapport d'arbitre, etc.).\n`;
     }
 
     if (contexte) {
