@@ -14,16 +14,244 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      documents: {
+        Row: {
+          contenu_texte: string | null
+          dossier_id: string
+          id: string
+          nom_fichier: string
+          storage_path: string | null
+          taille: number | null
+          type_document: Database["public"]["Enums"]["type_document"]
+          uploaded_at: string
+        }
+        Insert: {
+          contenu_texte?: string | null
+          dossier_id: string
+          id?: string
+          nom_fichier?: string
+          storage_path?: string | null
+          taille?: number | null
+          type_document?: Database["public"]["Enums"]["type_document"]
+          uploaded_at?: string
+        }
+        Update: {
+          contenu_texte?: string | null
+          dossier_id?: string
+          id?: string
+          nom_fichier?: string
+          storage_path?: string | null
+          taille?: number | null
+          type_document?: Database["public"]["Enums"]["type_document"]
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "dossiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dossiers: {
+        Row: {
+          arbitre_nom: string | null
+          arbitre_prenom: string | null
+          competition: string | null
+          contexte_supplementaire: string | null
+          created_at: string
+          date_match: string | null
+          deadline_defense: string | null
+          deadline_instruction: string | null
+          equipe_domicile: string | null
+          equipe_exterieur: string | null
+          gravite: Database["public"]["Enums"]["gravite_niveau"] | null
+          id: string
+          lieu_match: string | null
+          rapport_ia: string | null
+          reference: string
+          score: string | null
+          statut: Database["public"]["Enums"]["statut_dossier"]
+          type_incident: Database["public"]["Enums"]["type_incident"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          arbitre_nom?: string | null
+          arbitre_prenom?: string | null
+          competition?: string | null
+          contexte_supplementaire?: string | null
+          created_at?: string
+          date_match?: string | null
+          deadline_defense?: string | null
+          deadline_instruction?: string | null
+          equipe_domicile?: string | null
+          equipe_exterieur?: string | null
+          gravite?: Database["public"]["Enums"]["gravite_niveau"] | null
+          id?: string
+          lieu_match?: string | null
+          rapport_ia?: string | null
+          reference: string
+          score?: string | null
+          statut?: Database["public"]["Enums"]["statut_dossier"]
+          type_incident?: Database["public"]["Enums"]["type_incident"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          arbitre_nom?: string | null
+          arbitre_prenom?: string | null
+          competition?: string | null
+          contexte_supplementaire?: string | null
+          created_at?: string
+          date_match?: string | null
+          deadline_defense?: string | null
+          deadline_instruction?: string | null
+          equipe_domicile?: string | null
+          equipe_exterieur?: string | null
+          gravite?: Database["public"]["Enums"]["gravite_niveau"] | null
+          id?: string
+          lieu_match?: string | null
+          rapport_ia?: string | null
+          reference?: string
+          score?: string | null
+          statut?: Database["public"]["Enums"]["statut_dossier"]
+          type_incident?: Database["public"]["Enums"]["type_incident"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      parties: {
+        Row: {
+          club: string | null
+          dossier_id: string
+          est_mis_en_cause: boolean
+          id: string
+          nom: string
+          numero_licence: string | null
+          prenom: string | null
+          role_dans_incident: string | null
+          type_partie: Database["public"]["Enums"]["type_partie"]
+        }
+        Insert: {
+          club?: string | null
+          dossier_id: string
+          est_mis_en_cause?: boolean
+          id?: string
+          nom?: string
+          numero_licence?: string | null
+          prenom?: string | null
+          role_dans_incident?: string | null
+          type_partie?: Database["public"]["Enums"]["type_partie"]
+        }
+        Update: {
+          club?: string | null
+          dossier_id?: string
+          est_mis_en_cause?: boolean
+          id?: string
+          nom?: string
+          numero_licence?: string | null
+          prenom?: string | null
+          role_dans_incident?: string | null
+          type_partie?: Database["public"]["Enums"]["type_partie"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parties_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "dossiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          district: string | null
+          email: string | null
+          id: string
+          ligue: string | null
+          nom: string | null
+          poste: string | null
+          prenom: string | null
+        }
+        Insert: {
+          created_at?: string
+          district?: string | null
+          email?: string | null
+          id: string
+          ligue?: string | null
+          nom?: string | null
+          poste?: string | null
+          prenom?: string | null
+        }
+        Update: {
+          created_at?: string
+          district?: string | null
+          email?: string | null
+          id?: string
+          ligue?: string | null
+          nom?: string | null
+          poste?: string | null
+          prenom?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
+      gravite_niveau: "mineur" | "serieux" | "grave" | "tres_grave"
+      statut_dossier: "brouillon" | "en_instruction" | "rapport_genere" | "clos"
+      type_document:
+        | "feuille_match"
+        | "rapport_arbitre"
+        | "rapport_delegue"
+        | "rapport_club"
+        | "piece_defense"
+        | "autre"
+      type_incident:
+        | "exclusion_simple"
+        | "violence_physique"
+        | "propos_injurieux"
+        | "comportement_supporters"
+        | "fraude_licence"
+        | "cumul_avertissements"
+        | "autre"
+      type_partie: "joueur" | "entraineur" | "dirigeant" | "supporter" | "club"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +378,28 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+      gravite_niveau: ["mineur", "serieux", "grave", "tres_grave"],
+      statut_dossier: ["brouillon", "en_instruction", "rapport_genere", "clos"],
+      type_document: [
+        "feuille_match",
+        "rapport_arbitre",
+        "rapport_delegue",
+        "rapport_club",
+        "piece_defense",
+        "autre",
+      ],
+      type_incident: [
+        "exclusion_simple",
+        "violence_physique",
+        "propos_injurieux",
+        "comportement_supporters",
+        "fraude_licence",
+        "cumul_avertissements",
+        "autre",
+      ],
+      type_partie: ["joueur", "entraineur", "dirigeant", "supporter", "club"],
+    },
   },
 } as const
