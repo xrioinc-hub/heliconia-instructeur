@@ -397,6 +397,8 @@ export default function DossierEdit() {
         const existingKeys = new Set(parties.map((p) => `${(p.nom||"").toLowerCase().trim()}_${(p.prenom||"").toLowerCase().trim()}`));
         const newParties: Partie[] = [];
         for (const p of ext.parties) {
+          const key = `${(p.nom||"").toLowerCase().trim()}_${(p.prenom||"").toLowerCase().trim()}`;
+          if (existingKeys.has(key)) continue;
           const { data: inserted, error: pErr } = await supabase
             .from("parties")
             .insert({
