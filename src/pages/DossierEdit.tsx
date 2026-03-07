@@ -370,10 +370,10 @@ export default function DossierEdit() {
     setUploading(false);
 
     // Auto-extract match info from uploaded documents
-    if (newDocs.length > 0) autoExtractMatchInfo(newDocs);
+    if (newDocs.length > 0) autoExtractMatchInfo(newDocs, currentId);
   };
 
-  const autoExtractMatchInfo = async (docs: Document[]) => {
+  const autoExtractMatchInfo = async (docs: Document[], dossierIdOverride?: string) => {
     // Only extract if some fields are still empty
     const allDocs = [...documents, ...docs];
     const hasText = allDocs.some((d) => d.contenu_texte && d.contenu_texte.trim().length > 10);
@@ -421,6 +421,7 @@ export default function DossierEdit() {
 
       // Auto-add parties (avoid duplicates by matching nom+prenom)
       if (ext.parties && Array.isArray(ext.parties) && ext.parties.length > 0) {
+        const targetDossierId = dossierIdOverride ?? dossierId;
         const existingKeys = new Set(parties.map((p) => `${(p.nom||"").toLowerCase().trim()}_${(p.prenom||"").toLowerCase().trim()}`));
         const filteredParties = ext.parties.filter((p: Record<string, unknown>) => {
           const key = `${((p.nom as string)||"").toLowerCase().trim()}_${((p.prenom as string)||"").toLowerCase().trim()}`;
@@ -428,14 +429,14 @@ export default function DossierEdit() {
         });
 
         if (filteredParties.length > 0) {
-          if (dossierId) {
+          if (targetDossierId) {
             // Dossier already saved — insert directly
             const newParties: Partie[] = [];
             for (const p of filteredParties) {
               const { data: inserted, error: pErr } = await supabase
                 .from("parties")
                 .insert({
-                  dossier_id: dossierId,
+                  dossier_id: targetDossierId,
                   nom: (p.nom as string) || "",
                   prenom: (p.prenom as string) || "",
                   type_partie: ((p.type_partie as string) || "joueur") as TypePartie,
