@@ -166,6 +166,7 @@ export default function DossierEdit() {
   // Documents
   const [documents, setDocuments] = useState<Document[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [extractingInfo, setExtractingInfo] = useState(false);
   // Page images for scanned PDFs where OCR failed — kept in memory only (not in DB).
   // Used as a Vision fallback when generate-instruction is called.
   const documentImagesRef = useRef<Record<string, string[]>>({});
