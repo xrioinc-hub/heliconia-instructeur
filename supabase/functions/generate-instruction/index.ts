@@ -189,6 +189,62 @@ serve(async (req) => {
       );
     }
 
+    // --- RAG: Search relevant regulatory articles ---
+    let ragContext = "";
+    try {
+      // Build a search query from the dossier context
+      const ragQuery = `${infos_match.competition || ""} ${
+        parties?.map((p: any) => `${p.type || ""} ${p.role || ""}`).join(" ") || ""
+      } dossier disciplinaire sanctions`;
+
+      const embResponse = await fetch("https://api.openai.com/v1/embeddings", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "text-embedding-3-small",
+          input: ragQuery,
+        }),
+      });
+
+      if (embResponse.ok) {
+        const embResult = await embResponse.json();
+        const queryEmbedding = embResult.data[0].embedding;
+
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+
+        const { data: ragResults } = await supabaseAdmin.rpc("match_reglements", {
+          query_embedding: JSON.stringify(queryEmbedding),
+          match_threshold: 0.65,
+          match_count: 15,
+          filter_source: null,
+        });
+
+        if (ragResults && ragResults.length > 0) {
+          ragContext = "\n\nARTICLES RÉGLEMENTAIRES PERTINENTS (base de connaissances) :\n";
+          for (const r of ragResults) {
+            ragContext += `\n--- [${r.source.toUpperCase()}] ${r.titre_document}`;
+            if (r.article_reference) ragContext += ` — ${r.article_reference}`;
+            ragContext += ` (pertinence: ${(r.similarity * 100).toFixed(0)}%) ---\n`;
+            ragContext += `${r.contenu}\n`;
+          }
+          ragContext += "\n⚠️ INSTRUCTION : Appuie-toi PRIORITAIREMENT sur ces articles réglementaires ci-dessus pour qualifier les infractions et déterminer les barèmes de sanctions. Cite les articles précis avec leur source (FFF, Ligue, District).\n";
+        }
+      }
+    } catch (ragErr) {
+      console.error("RAG search failed (non-blocking):", ragErr);
+    }
+
+    // Append RAG context to user message
+    if (ragContext) {
+      userMessage += ragContext;
+    }
+
     // Build the user message content.
     // If page images are present (scanned PDFs where OCR failed), use the Vision API.
     // Otherwise keep a plain string to avoid unnecessary overhead.
