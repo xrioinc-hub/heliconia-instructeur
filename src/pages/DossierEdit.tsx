@@ -518,8 +518,14 @@ export default function DossierEdit() {
           {/* Left column - 40% */}
           <div className="lg:col-span-2 space-y-4">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Informations du match</CardTitle>
+                {extractingInfo && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
+                    Extraction IA…
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1">
