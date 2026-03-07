@@ -35,8 +35,8 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>
             <div className="flex items-center gap-2">
-              <span className="text-lg">⚽</span>
-              {!collapsed && <span className="font-bold text-primary">Instructeur</span>}
+              <img src={heliconLogo} alt="Helicon.IA" className="h-8 w-8 object-contain" />
+              {!collapsed && <span className="font-bold text-primary">Helicon.IA</span>}
             </div>
           </SidebarGroupLabel>
           {!collapsed && profile && (
