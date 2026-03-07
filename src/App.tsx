@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import DossierEdit from "./pages/DossierEdit";
 import Rapport from "./pages/Rapport";
 import Profil from "./pages/Profil";
+import BaseConnaissances from "./pages/BaseConnaissances";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const AppRoutes = () => (
     <Route path="/dossier/:id/edit" element={<ProtectedRoute><DossierEdit /></ProtectedRoute>} />
     <Route path="/dossier/:id/rapport" element={<ProtectedRoute><Rapport /></ProtectedRoute>} />
     <Route path="/profil" element={<ProtectedRoute><Profil /></ProtectedRoute>} />
+    <Route path="/base-connaissances" element={<ProtectedRoute><BaseConnaissances /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

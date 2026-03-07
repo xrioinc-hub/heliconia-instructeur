@@ -91,12 +91,14 @@ serve(async (req) => {
       .eq("id", userId)
       .single();
 
-    const district = profile?.district || "Non renseigné";
-    const ligue = profile?.ligue || "Non renseigné";
+    const district = profile?.district || null;
+    const ligue = profile?.ligue || null;
+    const districtLabel = district || "Non renseigné";
+    const ligueLabel = ligue || "Non renseigné";
 
     // Build user message
     let userMessage = `DOSSIER D'INSTRUCTION\n\n`;
-    userMessage += `District : ${district}\nLigue : ${ligue}\n\n`;
+    userMessage += `District : ${districtLabel}\nLigue : ${ligueLabel}\n\n`;
     userMessage += `INFORMATIONS DU MATCH :\n`;
     userMessage += `- Date : ${infos_match.date_match || "Non renseignée"}\n`;
     userMessage += `- Compétition : ${infos_match.competition || "Non renseignée"}\n`;
@@ -179,7 +181,7 @@ serve(async (req) => {
       userMessage += `\nCONTEXTE SUPPLÉMENTAIRE DE L'INSTRUCTEUR :\n${contexte}\n`;
     }
 
-    userMessage += `\n*District : ${district} | Ligue : ${ligue}*`;
+    userMessage += `\n*District : ${districtLabel} | Ligue : ${ligueLabel}*`;
 
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiKey) {
@@ -187,6 +189,64 @@ serve(async (req) => {
         JSON.stringify({ error: "Clé API OpenAI non configurée. Ajoutez OPENAI_API_KEY dans les secrets." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // --- RAG: Search relevant regulatory articles ---
+    let ragContext = "";
+    try {
+      // Build a search query from the dossier context
+      const ragQuery = `${infos_match.competition || ""} ${
+        parties?.map((p: any) => `${p.type || ""} ${p.role || ""}`).join(" ") || ""
+      } dossier disciplinaire sanctions`;
+
+      const embResponse = await fetch("https://api.openai.com/v1/embeddings", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "text-embedding-3-small",
+          input: ragQuery,
+        }),
+      });
+
+      if (embResponse.ok) {
+        const embResult = await embResponse.json();
+        const queryEmbedding = embResult.data[0].embedding;
+
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+
+        const { data: ragResults } = await supabaseAdmin.rpc("match_reglements", {
+          query_embedding: JSON.stringify(queryEmbedding),
+          match_threshold: 0.65,
+          match_count: 15,
+          filter_source: null,
+          filter_district: district,
+          filter_ligue: ligue,
+        });
+
+        if (ragResults && ragResults.length > 0) {
+          ragContext = "\n\nARTICLES RÉGLEMENTAIRES PERTINENTS (base de connaissances) :\n";
+          for (const r of ragResults) {
+            ragContext += `\n--- [${r.source.toUpperCase()}] ${r.titre_document}`;
+            if (r.article_reference) ragContext += ` — ${r.article_reference}`;
+            ragContext += ` (pertinence: ${(r.similarity * 100).toFixed(0)}%) ---\n`;
+            ragContext += `${r.contenu}\n`;
+          }
+          ragContext += "\n⚠️ INSTRUCTION : Appuie-toi PRIORITAIREMENT sur ces articles réglementaires ci-dessus pour qualifier les infractions et déterminer les barèmes de sanctions. Cite les articles précis avec leur source (FFF, Ligue, District).\n";
+        }
+      }
+    } catch (ragErr) {
+      console.error("RAG search failed (non-blocking):", ragErr);
+    }
+
+    // Append RAG context to user message
+    if (ragContext) {
+      userMessage += ragContext;
     }
 
     // Build the user message content.

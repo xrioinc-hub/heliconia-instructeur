@@ -201,6 +201,48 @@ export type Database = {
         }
         Relationships: []
       }
+      reglements: {
+        Row: {
+          article_reference: string | null
+          contenu: string
+          created_at: string
+          district: string | null
+          embedding: string | null
+          id: string
+          ligue: string | null
+          metadata: Json | null
+          source: Database["public"]["Enums"]["source_reglement"]
+          titre_document: string
+          user_id: string
+        }
+        Insert: {
+          article_reference?: string | null
+          contenu: string
+          created_at?: string
+          district?: string | null
+          embedding?: string | null
+          id?: string
+          ligue?: string | null
+          metadata?: Json | null
+          source: Database["public"]["Enums"]["source_reglement"]
+          titre_document: string
+          user_id: string
+        }
+        Update: {
+          article_reference?: string | null
+          contenu?: string
+          created_at?: string
+          district?: string | null
+          embedding?: string | null
+          id?: string
+          ligue?: string | null
+          metadata?: Json | null
+          source?: Database["public"]["Enums"]["source_reglement"]
+          titre_document?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -231,10 +273,46 @@ export type Database = {
         }
         Returns: boolean
       }
+      match_reglements:
+        | {
+            Args: {
+              filter_source?: Database["public"]["Enums"]["source_reglement"]
+              match_count?: number
+              match_threshold?: number
+              query_embedding: string
+            }
+            Returns: {
+              article_reference: string
+              contenu: string
+              id: string
+              similarity: number
+              source: Database["public"]["Enums"]["source_reglement"]
+              titre_document: string
+            }[]
+          }
+        | {
+            Args: {
+              filter_district?: string
+              filter_ligue?: string
+              filter_source?: Database["public"]["Enums"]["source_reglement"]
+              match_count?: number
+              match_threshold?: number
+              query_embedding: string
+            }
+            Returns: {
+              article_reference: string
+              contenu: string
+              id: string
+              similarity: number
+              source: Database["public"]["Enums"]["source_reglement"]
+              titre_document: string
+            }[]
+          }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
       gravite_niveau: "mineur" | "serieux" | "grave" | "tres_grave"
+      source_reglement: "fff" | "ligue" | "district"
       statut_dossier: "brouillon" | "en_instruction" | "rapport_genere" | "clos"
       type_document:
         | "feuille_match"
@@ -381,6 +459,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       gravite_niveau: ["mineur", "serieux", "grave", "tres_grave"],
+      source_reglement: ["fff", "ligue", "district"],
       statut_dossier: ["brouillon", "en_instruction", "rapport_genere", "clos"],
       type_document: [
         "feuille_match",

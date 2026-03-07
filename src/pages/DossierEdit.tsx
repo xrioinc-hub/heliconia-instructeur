@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Upload, FileText, Loader2, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Upload, FileText, Loader2, CheckCircle2, Sparkles } from "lucide-react";
 import { TYPE_INCIDENT_LABELS, TYPE_PARTIE_LABELS, TYPE_DOCUMENT_LABELS } from "@/lib/constants";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 import type { Database } from "@/integrations/supabase/types";
@@ -78,7 +78,7 @@ async function extractText(
         canvas.height = viewport.height;
         const ctx = canvas.getContext("2d")!;
         await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
-        images.push(canvas.toDataURL("image/jpeg", 0.8));
+        hiResImages.push(canvas.toDataURL("image/jpeg", 0.8));
       }
 
       const { data, error } = await supabase.functions.invoke("ocr-pdf", {
@@ -101,7 +101,7 @@ async function extractText(
         const canvas = document.createElement("canvas");
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
+        await page.render({ canvasContext: canvas.getContext("2d")!, viewport, canvas } as any).promise;
         fallbackImages.push(canvas.toDataURL("image/jpeg", 0.75));
       }
 
@@ -151,6 +151,7 @@ export default function DossierEdit() {
 
   // Parties
   const [parties, setParties] = useState<Partie[]>([]);
+  const [pendingExtractedParties, setPendingExtractedParties] = useState<Array<Record<string, unknown>>>([]);
   const [showPartieModal, setShowPartieModal] = useState(false);
   const [partieToDelete, setPartieToDelete] = useState<string | null>(null);
   const [newPartie, setNewPartie] = useState({
@@ -166,6 +167,7 @@ export default function DossierEdit() {
   // Documents
   const [documents, setDocuments] = useState<Document[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [extractingInfo, setExtractingInfo] = useState(false);
   // Page images for scanned PDFs where OCR failed — kept in memory only (not in DB).
   // Used as a Vision fallback when generate-instruction is called.
   const documentImagesRef = useRef<Record<string, string[]>>({});
@@ -245,6 +247,32 @@ export default function DossierEdit() {
       }
       resultId = data.id;
       setDossierId(data.id);
+
+      // Insert any parties that were extracted before the dossier was saved
+      if (pendingExtractedParties.length > 0) {
+        const insertedParties: Partie[] = [];
+        for (const p of pendingExtractedParties) {
+          const { data: inserted, error: pErr } = await supabase
+            .from("parties")
+            .insert({
+              dossier_id: data.id,
+              nom: (p.nom as string) || "",
+              prenom: (p.prenom as string) || "",
+              type_partie: ((p.type_partie as string) || "joueur") as TypePartie,
+              club: (p.club as string) || "",
+              est_mis_en_cause: (p.est_mis_en_cause as boolean) || false,
+              role_dans_incident: (p.role_dans_incident as string) || "",
+              numero_licence: (p.numero_licence as string) || "",
+            })
+            .select()
+            .single();
+          if (!pErr && inserted) insertedParties.push(inserted);
+        }
+        if (insertedParties.length > 0) {
+          setParties((prev) => [...prev, ...insertedParties]);
+        }
+        setPendingExtractedParties([]);
+      }
     }
 
     setSaving(false);
@@ -287,6 +315,7 @@ export default function DossierEdit() {
       if (!currentId) return;
     }
     setUploading(true);
+    const newDocs: Document[] = [];
 
     for (const file of Array.from(files)) {
       const ext = file.name.split(".").pop()?.toLowerCase();
@@ -297,11 +326,11 @@ export default function DossierEdit() {
 
       // Sanitize filename: remove special chars that Supabase Storage rejects
       const sanitizedName = file.name
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
-        .replace(/[°º#%&{}\\<>*?/$!'":@+`|=]/g, "") // remove special chars
-        .replace(/\(|\)/g, "") // remove parentheses
-        .replace(/\s+/g, "_") // replace spaces with underscores
-        .replace(/_+/g, "_"); // collapse multiple underscores
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[°º#%&{}\\<>*?/$!'":@+`|=]/g, "")
+        .replace(/\(|\)/g, "")
+        .replace(/\s+/g, "_")
+        .replace(/_+/g, "_");
       const storagePath = `${user.id}/${currentId}/${Date.now()}-${sanitizedName}`;
       const { error: uploadError } = await supabase.storage
         .from("dossier-documents")
@@ -331,14 +360,117 @@ export default function DossierEdit() {
       if (docError) {
         toast({ title: "Erreur", description: docError.message, variant: "destructive" });
       } else if (doc) {
-        // If OCR failed but we have page images, store them for the Vision fallback.
         if (pageImages && pageImages.length > 0) {
           documentImagesRef.current[doc.id] = pageImages;
         }
         setDocuments((prev) => [...prev, doc]);
+        newDocs.push(doc);
       }
     }
     setUploading(false);
+
+    // Auto-extract match info from uploaded documents
+    if (newDocs.length > 0) autoExtractMatchInfo(newDocs, currentId);
+  };
+
+  const autoExtractMatchInfo = async (docs: Document[], dossierIdOverride?: string) => {
+    // Only extract if some fields are still empty
+    const allDocs = [...documents, ...docs];
+    const hasText = allDocs.some((d) => d.contenu_texte && d.contenu_texte.trim().length > 10);
+    const hasImages = Object.values(documentImagesRef.current).some((imgs) => imgs.length > 0);
+    if (!hasText && !hasImages) return;
+
+    // Check if there are empty fields worth filling
+    const fieldsEmpty = !dateMatch || !competition || !equipeDomicile || !equipeExterieur || !score || !lieuMatch || !arbitrePrenom || !arbitreNom || parties.length === 0;
+    if (!fieldsEmpty) return;
+
+    setExtractingInfo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-match-info", {
+        body: {
+          documents_texte: allDocs.map((d) => ({
+            type: d.type_document,
+            contenu: d.contenu_texte || "",
+          })),
+          images: Object.values(documentImagesRef.current).flat().slice(0, 5),
+        },
+      });
+
+      if (error || !data?.extracted) {
+        console.warn("Auto-extraction failed:", error);
+        setExtractingInfo(false);
+        return;
+      }
+
+      const ext = data.extracted;
+      let fieldsUpdated = 0;
+
+      // Only fill empty fields — never overwrite user input
+      if (ext.date_match && !dateMatch) { setDateMatch(ext.date_match); fieldsUpdated++; }
+      if (ext.competition && !competition) { setCompetition(ext.competition); fieldsUpdated++; }
+      if (ext.equipe_domicile && !equipeDomicile) { setEquipeDomicile(ext.equipe_domicile); fieldsUpdated++; }
+      if (ext.equipe_exterieur && !equipeExterieur) { setEquipeExterieur(ext.equipe_exterieur); fieldsUpdated++; }
+      if (ext.score && !score) { setScore(ext.score); fieldsUpdated++; }
+      if (ext.lieu_match && !lieuMatch) { setLieuMatch(ext.lieu_match); fieldsUpdated++; }
+      if (ext.arbitre_prenom && !arbitrePrenom) { setArbitrePrenom(ext.arbitre_prenom); fieldsUpdated++; }
+      if (ext.arbitre_nom && !arbitreNom) { setArbitreNom(ext.arbitre_nom); fieldsUpdated++; }
+      if (ext.type_incident && ext.type_incident !== "autre" && typeIncident === "autre") {
+        setTypeIncident(ext.type_incident as TypeIncident);
+        fieldsUpdated++;
+      }
+
+      // Auto-add parties (avoid duplicates by matching nom+prenom)
+      if (ext.parties && Array.isArray(ext.parties) && ext.parties.length > 0) {
+        const targetDossierId = dossierIdOverride ?? dossierId;
+        const existingKeys = new Set(parties.map((p) => `${(p.nom||"").toLowerCase().trim()}_${(p.prenom||"").toLowerCase().trim()}`));
+        const filteredParties = ext.parties.filter((p: Record<string, unknown>) => {
+          const key = `${((p.nom as string)||"").toLowerCase().trim()}_${((p.prenom as string)||"").toLowerCase().trim()}`;
+          return !existingKeys.has(key);
+        });
+
+        if (filteredParties.length > 0) {
+          if (targetDossierId) {
+            // Dossier already saved — insert directly
+            const newParties: Partie[] = [];
+            for (const p of filteredParties) {
+              const { data: inserted, error: pErr } = await supabase
+                .from("parties")
+                .insert({
+                  dossier_id: targetDossierId,
+                  nom: (p.nom as string) || "",
+                  prenom: (p.prenom as string) || "",
+                  type_partie: ((p.type_partie as string) || "joueur") as TypePartie,
+                  club: (p.club as string) || "",
+                  est_mis_en_cause: (p.est_mis_en_cause as boolean) || false,
+                  role_dans_incident: (p.role_dans_incident as string) || "",
+                  numero_licence: (p.numero_licence as string) || "",
+                })
+                .select()
+                .single();
+              if (!pErr && inserted) newParties.push(inserted);
+            }
+            if (newParties.length > 0) {
+              setParties((prev) => [...prev, ...newParties]);
+              fieldsUpdated += newParties.length;
+            }
+          } else {
+            // Dossier not yet saved — store for later insertion
+            setPendingExtractedParties(filteredParties);
+            fieldsUpdated += filteredParties.length;
+          }
+        }
+      }
+
+      if (fieldsUpdated > 0) {
+        toast({
+          title: "✨ Informations extraites automatiquement",
+          description: `${fieldsUpdated} champ(s) rempli(s) à partir des documents. Vérifiez et corrigez si nécessaire.`,
+        });
+      }
+    } catch (err) {
+      console.warn("Auto-extraction error:", err);
+    }
+    setExtractingInfo(false);
   };
 
   const updateDocType = async (docId: string, type: TypeDocument) => {
@@ -429,8 +561,14 @@ export default function DossierEdit() {
           {/* Left column - 40% */}
           <div className="lg:col-span-2 space-y-4">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Informations du match</CardTitle>
+                {extractingInfo && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
+                    Extraction IA…
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1">
