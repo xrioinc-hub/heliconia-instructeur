@@ -151,6 +151,7 @@ export default function DossierEdit() {
 
   // Parties
   const [parties, setParties] = useState<Partie[]>([]);
+  const [pendingExtractedParties, setPendingExtractedParties] = useState<Array<Record<string, unknown>>>([]);
   const [showPartieModal, setShowPartieModal] = useState(false);
   const [partieToDelete, setPartieToDelete] = useState<string | null>(null);
   const [newPartie, setNewPartie] = useState({
