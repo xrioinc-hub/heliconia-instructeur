@@ -340,6 +340,93 @@ export default function DossierEdit() {
       }
     }
     setUploading(false);
+
+    // Auto-extract match info from uploaded documents
+    autoExtractMatchInfo(newDocs);
+  };
+
+  const autoExtractMatchInfo = async (docs: Document[]) => {
+    // Only extract if some fields are still empty
+    const allDocs = [...documents, ...docs];
+    const hasText = allDocs.some((d) => d.contenu_texte && d.contenu_texte.trim().length > 10);
+    const hasImages = Object.values(documentImagesRef.current).some((imgs) => imgs.length > 0);
+    if (!hasText && !hasImages) return;
+
+    // Check if there are empty fields worth filling
+    const fieldsEmpty = !dateMatch || !competition || !equipeDomicile || !equipeExterieur || !score || !lieuMatch || !arbitrePrenom || !arbitreNom || parties.length === 0;
+    if (!fieldsEmpty) return;
+
+    setExtractingInfo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-match-info", {
+        body: {
+          documents_texte: allDocs.map((d) => ({
+            type: d.type_document,
+            contenu: d.contenu_texte || "",
+          })),
+          images: Object.values(documentImagesRef.current).flat().slice(0, 5),
+        },
+      });
+
+      if (error || !data?.extracted) {
+        console.warn("Auto-extraction failed:", error);
+        setExtractingInfo(false);
+        return;
+      }
+
+      const ext = data.extracted;
+      let fieldsUpdated = 0;
+
+      // Only fill empty fields — never overwrite user input
+      if (ext.date_match && !dateMatch) { setDateMatch(ext.date_match); fieldsUpdated++; }
+      if (ext.competition && !competition) { setCompetition(ext.competition); fieldsUpdated++; }
+      if (ext.equipe_domicile && !equipeDomicile) { setEquipeDomicile(ext.equipe_domicile); fieldsUpdated++; }
+      if (ext.equipe_exterieur && !equipeExterieur) { setEquipeExterieur(ext.equipe_exterieur); fieldsUpdated++; }
+      if (ext.score && !score) { setScore(ext.score); fieldsUpdated++; }
+      if (ext.lieu_match && !lieuMatch) { setLieuMatch(ext.lieu_match); fieldsUpdated++; }
+      if (ext.arbitre_prenom && !arbitrePrenom) { setArbitrePrenom(ext.arbitre_prenom); fieldsUpdated++; }
+      if (ext.arbitre_nom && !arbitreNom) { setArbitreNom(ext.arbitre_nom); fieldsUpdated++; }
+      if (ext.type_incident && ext.type_incident !== "autre" && typeIncident === "autre") {
+        setTypeIncident(ext.type_incident as TypeIncident);
+        fieldsUpdated++;
+      }
+
+      // Auto-add parties if none exist yet
+      if (ext.parties && Array.isArray(ext.parties) && ext.parties.length > 0 && parties.length === 0 && dossierId) {
+        const newParties: Partie[] = [];
+        for (const p of ext.parties) {
+          const { data: inserted, error: pErr } = await supabase
+            .from("parties")
+            .insert({
+              dossier_id: dossierId,
+              nom: p.nom || "",
+              prenom: p.prenom || "",
+              type_partie: (p.type_partie || "joueur") as TypePartie,
+              club: p.club || "",
+              est_mis_en_cause: p.est_mis_en_cause || false,
+              role_dans_incident: p.role_dans_incident || "",
+              numero_licence: p.numero_licence || "",
+            })
+            .select()
+            .single();
+          if (!pErr && inserted) newParties.push(inserted);
+        }
+        if (newParties.length > 0) {
+          setParties((prev) => [...prev, ...newParties]);
+          fieldsUpdated += newParties.length;
+        }
+      }
+
+      if (fieldsUpdated > 0) {
+        toast({
+          title: "✨ Informations extraites automatiquement",
+          description: `${fieldsUpdated} champ(s) rempli(s) à partir des documents. Vérifiez et corrigez si nécessaire.`,
+        });
+      }
+    } catch (err) {
+      console.warn("Auto-extraction error:", err);
+    }
+    setExtractingInfo(false);
   };
 
   const updateDocType = async (docId: string, type: TypeDocument) => {
