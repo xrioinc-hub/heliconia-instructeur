@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderOpen, FilePlus, UserCircle, LogOut, BookOpen } from "lucide-react";
+import { LayoutDashboard, FolderOpen, FilePlus, UserCircle, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,7 +20,6 @@ import heliconLogo from "@/assets/helicon-logo.png";
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Nouveau dossier", url: "/dossier/nouveau", icon: FilePlus },
-  { title: "Base réglementaire", url: "/base-connaissances", icon: BookOpen },
   { title: "Profil", url: "/profil", icon: UserCircle },
 ];
 
