@@ -370,10 +370,10 @@ export default function DossierEdit() {
     setUploading(false);
 
     // Auto-extract match info from uploaded documents
-    if (newDocs.length > 0) autoExtractMatchInfo(newDocs);
+    if (newDocs.length > 0) autoExtractMatchInfo(newDocs, currentId);
   };
 
-  const autoExtractMatchInfo = async (docs: Document[]) => {
+  const autoExtractMatchInfo = async (docs: Document[], dossierIdOverride?: string) => {
     // Only extract if some fields are still empty
     const allDocs = [...documents, ...docs];
     const hasText = allDocs.some((d) => d.contenu_texte && d.contenu_texte.trim().length > 10);
