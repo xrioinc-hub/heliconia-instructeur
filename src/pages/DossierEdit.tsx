@@ -78,7 +78,7 @@ async function extractText(
         canvas.height = viewport.height;
         const ctx = canvas.getContext("2d")!;
         await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
-        images.push(canvas.toDataURL("image/jpeg", 0.8));
+        hiResImages.push(canvas.toDataURL("image/jpeg", 0.8));
       }
 
       const { data, error } = await supabase.functions.invoke("ocr-pdf", {
