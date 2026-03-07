@@ -1,6 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+// Use the locally-bundled pdfjs worker so version always matches the installed package.
+// Importing from CDN (cdnjs/unpkg) is fragile — they may not carry every patch version.
+import pdfjsWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,22 +32,27 @@ type TypeDocument = Database["public"]["Enums"]["type_document"];
 // Below this threshold we treat the PDF as a scanned document and run OCR.
 const PDF_TEXT_THRESHOLD_PER_PAGE = 50;
 
+// Result type for text extraction.
+type ExtractResult = { text: string; images?: string[] };
+
 async function extractText(
   file: File,
   onProgress?: (message: string) => void
-): Promise<string> {
+): Promise<ExtractResult> {
   if (file.name.endsWith(".txt")) {
-    return file.text();
+    return { text: await file.text() };
   }
 
   if (file.name.endsWith(".pdf")) {
     try {
       const pdfjsLib = await import("pdfjs-dist");
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+      // Use the locally-bundled worker — version always matches the installed package.
+      // Loading from a CDN is fragile: the CDN may not carry every patch release.
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
 
-      // --- Try native text extraction first (digital / Word PDF) ---
+      // --- Try native text extraction first (digital / Word-to-PDF) ---
       let text = "";
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
@@ -55,16 +63,15 @@ async function extractText(
       const avgCharsPerPage = text.trim().length / pdf.numPages;
       if (avgCharsPerPage >= PDF_TEXT_THRESHOLD_PER_PAGE) {
         // Digital PDF with embedded text — return directly.
-        return text;
+        return { text };
       }
 
-      // --- Scanned PDF: render each page to an image and call OCR ---
+      // --- Scanned PDF: render pages and try dedicated OCR function ---
       onProgress?.("PDF scanné détecté — extraction OCR en cours…");
 
-      const images: string[] = [];
+      const hiResImages: string[] = [];
       for (let i = 1; i <= Math.min(pdf.numPages, 15); i++) {
         const page = await pdf.getPage(i);
-        // Scale 1.5× gives ~1240×1754 px for A4, good balance of quality/size
         const viewport = page.getViewport({ scale: 1.5 });
         const canvas = document.createElement("canvas");
         canvas.width = viewport.width;
@@ -75,18 +82,33 @@ async function extractText(
       }
 
       const { data, error } = await supabase.functions.invoke("ocr-pdf", {
-        body: { images },
+        body: { images: hiResImages },
       });
 
-      if (error) {
-        console.error("OCR error:", error);
-        return "[Erreur OCR — le texte n'a pas pu être extrait du PDF scanné]";
+      if (!error && data?.text) {
+        return { text: data.text as string };
       }
 
-      return (data?.text as string) || "[Aucun texte extrait par OCR]";
+      // OCR edge function unavailable or failed — keep low-res page images so
+      // generate-instruction can use GPT-4o Vision as a last-resort fallback.
+      console.warn("OCR edge function failed, storing page images for Vision fallback:", error);
+      onProgress?.("OCR indisponible — les images seront analysées directement par l'IA lors de la génération.");
+
+      const fallbackImages: string[] = [];
+      for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 1.0 });
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
+        fallbackImages.push(canvas.toDataURL("image/jpeg", 0.75));
+      }
+
+      return { text: "", images: fallbackImages };
     } catch (e) {
       console.error("PDF extraction error:", e);
-      return "[Erreur d'extraction PDF]";
+      return { text: "[Erreur d'extraction PDF]" };
     }
   }
 
@@ -95,13 +117,13 @@ async function extractText(
       const mammoth = await import("mammoth");
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
-      return result.value;
+      return { text: result.value };
     } catch {
-      return "[Erreur d'extraction DOCX]";
+      return { text: "[Erreur d'extraction DOCX]" };
     }
   }
 
-  return "";
+  return { text: "" };
 }
 
 export default function DossierEdit() {
@@ -144,6 +166,9 @@ export default function DossierEdit() {
   // Documents
   const [documents, setDocuments] = useState<Document[]>([]);
   const [uploading, setUploading] = useState(false);
+  // Page images for scanned PDFs where OCR failed — kept in memory only (not in DB).
+  // Used as a Vision fallback when generate-instruction is called.
+  const documentImagesRef = useRef<Record<string, string[]>>({});
 
   // Load existing dossier
   useEffect(() => {
@@ -286,7 +311,7 @@ export default function DossierEdit() {
         continue;
       }
 
-      const contenuTexte = await extractText(file, (message) => {
+      const { text: contenuTexte, images: pageImages } = await extractText(file, (message) => {
         toast({ title: "Analyse du fichier", description: message });
       });
 
@@ -306,6 +331,10 @@ export default function DossierEdit() {
       if (docError) {
         toast({ title: "Erreur", description: docError.message, variant: "destructive" });
       } else if (doc) {
+        // If OCR failed but we have page images, store them for the Vision fallback.
+        if (pageImages && pageImages.length > 0) {
+          documentImagesRef.current[doc.id] = pageImages;
+        }
         setDocuments((prev) => [...prev, doc]);
       }
     }
@@ -341,7 +370,12 @@ export default function DossierEdit() {
       const { data, error } = await supabase.functions.invoke("generate-instruction", {
         body: {
           dossier_id: currentId,
-          documents_texte: documents.map((d) => ({ type: d.type_document, contenu: d.contenu_texte || "" })),
+          documents_texte: documents.map((d) => ({
+            type: d.type_document,
+            contenu: d.contenu_texte || "",
+            // Include page images for scanned PDFs so generate-instruction can use Vision as fallback.
+            images: documentImagesRef.current[d.id],
+          })),
           contexte,
           infos_match: { date_match: dateMatch, competition, equipe_domicile: equipeDomicile, equipe_exterieur: equipeExterieur, score, lieu_match: lieuMatch, arbitre: `${arbitrePrenom} ${arbitreNom}` },
           parties: parties.map((p) => ({ nom: p.nom, prenom: p.prenom, type: p.type_partie, club: p.club, role: p.role_dans_incident, mis_en_cause: p.est_mis_en_cause })),

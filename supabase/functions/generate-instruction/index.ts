@@ -134,14 +134,24 @@ serve(async (req) => {
 
     const failedDocs: string[] = [];
     let hasValidDoc = false;
+    // Collect page images from scanned docs where text extraction failed.
+    // These will be added to the GPT-4o Vision call as a last-resort fallback.
+    const visionImages: string[] = [];
 
     for (const doc of sortedDocs) {
       const docText = (doc.contenu || "").trim();
 
-      // Skip documents where extraction failed and record them for the warning.
+      // Check whether extraction failed on the client.
       const isError = !docText || EXTRACTION_ERROR_MARKERS.some((marker) => docText.startsWith(marker));
       if (isError) {
-        failedDocs.push(doc.type);
+        // If the client provided page images, use them via Vision.
+        if (Array.isArray(doc.images) && doc.images.length > 0) {
+          userMessage += `\n--- ${doc.type} (document scanné — analysé via les images ci-jointes) ---\n`;
+          visionImages.push(...(doc.images as string[]));
+          hasValidDoc = true;
+        } else {
+          failedDocs.push(doc.type);
+        }
         continue;
       }
 
@@ -179,6 +189,19 @@ serve(async (req) => {
       );
     }
 
+    // Build the user message content.
+    // If page images are present (scanned PDFs where OCR failed), use the Vision API.
+    // Otherwise keep a plain string to avoid unnecessary overhead.
+    const userContent: unknown = visionImages.length > 0
+      ? [
+          { type: "text", text: userMessage },
+          ...visionImages.map((url) => ({
+            type: "image_url",
+            image_url: { url, detail: "high" },
+          })),
+        ]
+      : userMessage;
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -189,7 +212,7 @@ serve(async (req) => {
         model: "gpt-4o",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userMessage },
+          { role: "user", content: userContent },
         ],
         temperature: 0.2,
         max_tokens: 6000,
