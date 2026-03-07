@@ -288,6 +288,7 @@ export default function DossierEdit() {
       if (!currentId) return;
     }
     setUploading(true);
+    const newDocs: Document[] = [];
 
     for (const file of Array.from(files)) {
       const ext = file.name.split(".").pop()?.toLowerCase();
@@ -298,11 +299,11 @@ export default function DossierEdit() {
 
       // Sanitize filename: remove special chars that Supabase Storage rejects
       const sanitizedName = file.name
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
-        .replace(/[°º#%&{}\\<>*?/$!'":@+`|=]/g, "") // remove special chars
-        .replace(/\(|\)/g, "") // remove parentheses
-        .replace(/\s+/g, "_") // replace spaces with underscores
-        .replace(/_+/g, "_"); // collapse multiple underscores
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[°º#%&{}\\<>*?/$!'":@+`|=]/g, "")
+        .replace(/\(|\)/g, "")
+        .replace(/\s+/g, "_")
+        .replace(/_+/g, "_");
       const storagePath = `${user.id}/${currentId}/${Date.now()}-${sanitizedName}`;
       const { error: uploadError } = await supabase.storage
         .from("dossier-documents")
@@ -332,17 +333,17 @@ export default function DossierEdit() {
       if (docError) {
         toast({ title: "Erreur", description: docError.message, variant: "destructive" });
       } else if (doc) {
-        // If OCR failed but we have page images, store them for the Vision fallback.
         if (pageImages && pageImages.length > 0) {
           documentImagesRef.current[doc.id] = pageImages;
         }
         setDocuments((prev) => [...prev, doc]);
+        newDocs.push(doc);
       }
     }
     setUploading(false);
 
     // Auto-extract match info from uploaded documents
-    autoExtractMatchInfo(newDocs);
+    if (newDocs.length > 0) autoExtractMatchInfo(newDocs);
   };
 
   const autoExtractMatchInfo = async (docs: Document[]) => {
