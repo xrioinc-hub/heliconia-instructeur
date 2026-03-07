@@ -392,10 +392,13 @@ export default function DossierEdit() {
         fieldsUpdated++;
       }
 
-      // Auto-add parties if none exist yet
-      if (ext.parties && Array.isArray(ext.parties) && ext.parties.length > 0 && parties.length === 0 && dossierId) {
+      // Auto-add parties (avoid duplicates by matching nom+prenom)
+      if (ext.parties && Array.isArray(ext.parties) && ext.parties.length > 0 && dossierId) {
+        const existingKeys = new Set(parties.map((p) => `${(p.nom||"").toLowerCase().trim()}_${(p.prenom||"").toLowerCase().trim()}`));
         const newParties: Partie[] = [];
         for (const p of ext.parties) {
+          const key = `${(p.nom||"").toLowerCase().trim()}_${(p.prenom||"").toLowerCase().trim()}`;
+          if (existingKeys.has(key)) continue;
           const { data: inserted, error: pErr } = await supabase
             .from("parties")
             .insert({
