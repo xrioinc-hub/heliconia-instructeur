@@ -394,31 +394,43 @@ export default function DossierEdit() {
       }
 
       // Auto-add parties (avoid duplicates by matching nom+prenom)
-      if (ext.parties && Array.isArray(ext.parties) && ext.parties.length > 0 && dossierId) {
+      if (ext.parties && Array.isArray(ext.parties) && ext.parties.length > 0) {
         const existingKeys = new Set(parties.map((p) => `${(p.nom||"").toLowerCase().trim()}_${(p.prenom||"").toLowerCase().trim()}`));
-        const newParties: Partie[] = [];
-        for (const p of ext.parties) {
-          const key = `${(p.nom||"").toLowerCase().trim()}_${(p.prenom||"").toLowerCase().trim()}`;
-          if (existingKeys.has(key)) continue;
-          const { data: inserted, error: pErr } = await supabase
-            .from("parties")
-            .insert({
-              dossier_id: dossierId,
-              nom: p.nom || "",
-              prenom: p.prenom || "",
-              type_partie: (p.type_partie || "joueur") as TypePartie,
-              club: p.club || "",
-              est_mis_en_cause: p.est_mis_en_cause || false,
-              role_dans_incident: p.role_dans_incident || "",
-              numero_licence: p.numero_licence || "",
-            })
-            .select()
-            .single();
-          if (!pErr && inserted) newParties.push(inserted);
-        }
-        if (newParties.length > 0) {
-          setParties((prev) => [...prev, ...newParties]);
-          fieldsUpdated += newParties.length;
+        const filteredParties = ext.parties.filter((p: Record<string, unknown>) => {
+          const key = `${((p.nom as string)||"").toLowerCase().trim()}_${((p.prenom as string)||"").toLowerCase().trim()}`;
+          return !existingKeys.has(key);
+        });
+
+        if (filteredParties.length > 0) {
+          if (dossierId) {
+            // Dossier already saved — insert directly
+            const newParties: Partie[] = [];
+            for (const p of filteredParties) {
+              const { data: inserted, error: pErr } = await supabase
+                .from("parties")
+                .insert({
+                  dossier_id: dossierId,
+                  nom: (p.nom as string) || "",
+                  prenom: (p.prenom as string) || "",
+                  type_partie: ((p.type_partie as string) || "joueur") as TypePartie,
+                  club: (p.club as string) || "",
+                  est_mis_en_cause: (p.est_mis_en_cause as boolean) || false,
+                  role_dans_incident: (p.role_dans_incident as string) || "",
+                  numero_licence: (p.numero_licence as string) || "",
+                })
+                .select()
+                .single();
+              if (!pErr && inserted) newParties.push(inserted);
+            }
+            if (newParties.length > 0) {
+              setParties((prev) => [...prev, ...newParties]);
+              fieldsUpdated += newParties.length;
+            }
+          } else {
+            // Dossier not yet saved — store for later insertion
+            setPendingExtractedParties(filteredParties);
+            fieldsUpdated += filteredParties.length;
+          }
         }
       }
 
