@@ -104,36 +104,310 @@
   }
 }
 
-/* Print styles — masque sidebar, header, boutons — affiche uniquement le rapport */
+/* ============================================================
+   PRINT LAYOUT — style Procès-Verbal District de Football
+   ============================================================ */
+
+/* Caché à l'écran */
+#print-layout {
+  display: none;
+}
+
 @media print {
+  /* Masquer toute l'interface */
   aside,
   header,
   nav,
   [data-sidebar],
-  .no-print {
+  .no-print,
+  .print-header {
     display: none !important;
   }
+
   main {
     padding: 0 !important;
+    margin: 0 !important;
   }
-  .prose {
-    max-width: none !important;
-  }
-  .lg\:col-span-4 {
-    display: none !important;
-  }
-  .lg\:col-span-8 {
-    grid-column: span 12 / span 12 !important;
-  }
-  .print-header {
+
+  /* Afficher uniquement le layout PV */
+  #print-layout {
     display: block !important;
-    margin-bottom: 1.5rem;
-    border-bottom: 2px solid #333;
-    padding-bottom: 0.75rem;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11pt;
+    color: #111;
+    line-height: 1.55;
+    background: white;
   }
-  [class*="shadow"] {
-    box-shadow: none !important;
-    border: 1px solid #ddd !important;
+
+  @page {
+    size: A4 portrait;
+    margin: 14mm 14mm 20mm 14mm;
+  }
+
+  /* ---- EN-TÊTE ---- */
+  .pv-header {
+    display: flex !important;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 6px;
+  }
+
+  .pv-logo-box {
+    flex-shrink: 0;
+  }
+
+  .pv-logo-inner {
+    width: 72px;
+    height: 72px;
+    background: #1b3a6b !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color: white;
+    font-weight: bold;
+    font-size: 13pt;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+
+  .pv-header-center {
+    flex: 1;
+  }
+
+  .pv-district-name {
+    font-size: 16pt;
+    font-weight: bold;
+    color: #111;
+  }
+
+  .pv-ligue-label {
+    font-size: 11pt;
+    color: #333;
+  }
+
+  .pv-header-right {
+    text-align: right;
+    font-size: 9.5pt;
+    flex-shrink: 0;
+  }
+
+  .pv-ref-label {
+    font-weight: bold;
+    color: #111;
+  }
+
+  .pv-date-label {
+    color: #555;
+    margin-top: 2px;
+  }
+
+  /* ---- LIGNE DE SÉPARATION ---- */
+  .pv-divider {
+    height: 3px;
+    background: #1b3a6b !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    margin: 8px 0 18px 0;
+  }
+
+  /* ---- BANNIÈRE TITRE ---- */
+  .pv-title-banner {
+    background: #1b3a6b !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color: white;
+    text-align: center;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    line-height: 1.7;
+  }
+
+  .pv-title-line1 {
+    font-size: 12pt;
+    font-weight: bold;
+  }
+
+  .pv-title-line2 {
+    font-size: 12pt;
+    font-weight: bold;
+  }
+
+  .pv-title-line3 {
+    font-size: 10pt;
+    margin-top: 4px;
+    opacity: 0.9;
+  }
+
+  /* ---- BOX MATCH ---- */
+  .pv-match-banner {
+    background: #1b3a6b !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color: white;
+    text-align: center;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    line-height: 1.8;
+    font-size: 11pt;
+  }
+
+  .pv-match-teams {
+    font-size: 12pt;
+  }
+
+  .pv-match-detail {
+    font-weight: normal;
+    font-size: 10pt;
+  }
+
+  /* ---- PARTIES ---- */
+  .pv-parties-section {
+    margin-bottom: 18px;
+    border: 1px solid #bbb;
+    padding: 10px 14px;
+    page-break-inside: avoid;
+  }
+
+  .pv-section-underline-title {
+    font-weight: bold;
+    text-decoration: underline;
+    margin-bottom: 8px;
+    font-size: 11pt;
+  }
+
+  .pv-partie-line {
+    margin-bottom: 5px;
+    font-size: 10.5pt;
+  }
+
+  /* ---- CORPS DU RAPPORT ---- */
+  .pv-rapport-body {
+    margin-bottom: 20px;
+  }
+
+  .pv-rapport-body h1 {
+    font-size: 13pt;
+    font-weight: bold;
+    color: #1b3a6b;
+    margin: 18px 0 8px 0;
+    page-break-after: avoid;
+  }
+
+  .pv-rapport-body h2 {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #1b3a6b;
+    text-decoration: underline;
+    margin: 16px 0 8px 0;
+    page-break-after: avoid;
+  }
+
+  .pv-rapport-body h3 {
+    font-size: 11pt;
+    font-weight: bold;
+    margin: 12px 0 6px 0;
+    page-break-after: avoid;
+  }
+
+  .pv-rapport-body p {
+    margin-bottom: 8px;
+    text-align: justify;
+    orphans: 3;
+    widows: 3;
+  }
+
+  .pv-rapport-body strong {
+    font-weight: bold;
+  }
+
+  .pv-rapport-body em {
+    font-style: italic;
+  }
+
+  .pv-rapport-body ul {
+    margin: 6px 0 10px 24px;
+    list-style-type: disc;
+  }
+
+  .pv-rapport-body ol {
+    margin: 6px 0 10px 24px;
+    list-style-type: decimal;
+  }
+
+  .pv-rapport-body li {
+    margin-bottom: 4px;
+  }
+
+  .pv-rapport-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+
+  .pv-rapport-body table th {
+    background: #1b3a6b !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color: white;
+    padding: 6px 8px;
+    text-align: left;
+    font-weight: bold;
+  }
+
+  .pv-rapport-body table td {
+    padding: 5px 8px;
+    border: 1px solid #bbb;
+    vertical-align: top;
+  }
+
+  .pv-rapport-body table tr:nth-child(even) td {
+    background: #f4f6fb !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ---- AVERTISSEMENT IA ---- */
+  .pv-disclaimer-print {
+    font-size: 9pt;
+    color: #666;
+    font-style: italic;
+    border-top: 1px solid #ccc;
+    padding-top: 8px;
+    margin-bottom: 32px;
+    text-align: justify;
+  }
+
+  /* ---- SIGNATURES ---- */
+  .pv-signature-row {
+    display: flex !important;
+    gap: 32px;
+    justify-content: space-around;
+    margin-top: 40px;
+    page-break-inside: avoid;
+  }
+
+  .pv-signature-box {
+    background: #1b3a6b !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color: white;
+    padding: 12px 24px;
+    text-align: center;
+    min-width: 180px;
+  }
+
+  .pv-signature-title {
+    font-weight: bold;
+    font-size: 10pt;
+  }
+
+  .pv-signature-space {
+    height: 50px;
   }
 }
 
