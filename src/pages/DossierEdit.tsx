@@ -25,28 +25,71 @@ type TypeIncident = Database["public"]["Enums"]["type_incident"];
 type TypePartie = Database["public"]["Enums"]["type_partie"];
 type TypeDocument = Database["public"]["Enums"]["type_document"];
 
-async function extractText(file: File): Promise<string> {
+// Minimum average characters per page to consider a PDF as having extractable text.
+// Below this threshold we treat the PDF as a scanned document and run OCR.
+const PDF_TEXT_THRESHOLD_PER_PAGE = 50;
+
+async function extractText(
+  file: File,
+  onProgress?: (message: string) => void
+): Promise<string> {
   if (file.name.endsWith(".txt")) {
     return file.text();
   }
+
   if (file.name.endsWith(".pdf")) {
     try {
       const pdfjsLib = await import("pdfjs-dist");
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+
+      // --- Try native text extraction first (digital / Word PDF) ---
       let text = "";
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         text += content.items.map((item: any) => item.str).join(" ") + "\n";
       }
-      return text;
+
+      const avgCharsPerPage = text.trim().length / pdf.numPages;
+      if (avgCharsPerPage >= PDF_TEXT_THRESHOLD_PER_PAGE) {
+        // Digital PDF with embedded text — return directly.
+        return text;
+      }
+
+      // --- Scanned PDF: render each page to an image and call OCR ---
+      onProgress?.("PDF scanné détecté — extraction OCR en cours…");
+
+      const images: string[] = [];
+      for (let i = 1; i <= Math.min(pdf.numPages, 15); i++) {
+        const page = await pdf.getPage(i);
+        // Scale 1.5× gives ~1240×1754 px for A4, good balance of quality/size
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d")!;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        images.push(canvas.toDataURL("image/jpeg", 0.8));
+      }
+
+      const { data, error } = await supabase.functions.invoke("ocr-pdf", {
+        body: { images },
+      });
+
+      if (error) {
+        console.error("OCR error:", error);
+        return "[Erreur OCR — le texte n'a pas pu être extrait du PDF scanné]";
+      }
+
+      return (data?.text as string) || "[Aucun texte extrait par OCR]";
     } catch (e) {
       console.error("PDF extraction error:", e);
       return "[Erreur d'extraction PDF]";
     }
   }
+
   if (file.name.endsWith(".docx") || file.name.endsWith(".doc")) {
     try {
       const mammoth = await import("mammoth");
@@ -57,6 +100,7 @@ async function extractText(file: File): Promise<string> {
       return "[Erreur d'extraction DOCX]";
     }
   }
+
   return "";
 }
 
@@ -242,7 +286,9 @@ export default function DossierEdit() {
         continue;
       }
 
-      const contenuTexte = await extractText(file);
+      const contenuTexte = await extractText(file, (message) => {
+        toast({ title: "Analyse du fichier", description: message });
+      });
 
       const { data: doc, error: docError } = await supabase
         .from("documents")
