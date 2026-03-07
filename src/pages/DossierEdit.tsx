@@ -436,7 +436,7 @@ export default function DossierEdit() {
               const { data: inserted, error: pErr } = await supabase
                 .from("parties")
                 .insert({
-                  dossier_id: dossierId,
+                  dossier_id: targetDossierId,
                   nom: (p.nom as string) || "",
                   prenom: (p.prenom as string) || "",
                   type_partie: ((p.type_partie as string) || "joueur") as TypePartie,
