@@ -38,6 +38,8 @@ export default function BaseConnaissances() {
   const [source, setSource] = useState<SourceReglement>("fff");
   const [titre, setTitre] = useState("");
   const [texte, setTexte] = useState("");
+  const [districtValue, setDistrictValue] = useState(profile?.district || "");
+  const [ligueValue, setLigueValue] = useState(profile?.ligue || "");
   const [files, setFiles] = useState<File[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [loading, setLoading] = useState(false);
