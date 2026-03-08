@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FilePlus, FolderOpen, FileCheck, Archive, AlertTriangle, FileEdit, RefreshCw } from "lucide-react";
+import { FilePlus, FolderOpen, FileCheck, Archive, AlertTriangle, FileEdit, RefreshCw, EyeOff, Eye } from "lucide-react";
 import { STATUT_LABELS, GRAVITE_LABELS, TYPE_INCIDENT_LABELS } from "@/lib/constants";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -57,6 +57,7 @@ export default function Dashboard() {
   const [filterStatut, setFilterStatut] = useState("all");
   const [filterGravite, setFilterGravite] = useState("all");
   const [filterType, setFilterType] = useState("all");
+  const [showClos, setShowClos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,6 +107,7 @@ export default function Dashboard() {
   }, []);
 
   const filtered = dossiers.filter((d) => {
+    if (!showClos && d.statut === "clos") return false;
     if (filterStatut !== "all" && d.statut !== filterStatut) return false;
     if (filterGravite !== "all" && d.gravite !== filterGravite) return false;
     if (filterType !== "all" && d.type_incident !== filterType) return false;
@@ -260,6 +262,15 @@ export default function Dashboard() {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant={showClos ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowClos(!showClos)}
+            className="gap-1.5 h-10"
+          >
+            {showClos ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            Clos ({counts.clos})
+          </Button>
         </div>
 
         {/* Dossiers table */}
