@@ -24,8 +24,8 @@ function applyInlineFormatting(text: string): string {
 }
 
 // Converts Markdown to HTML with proper handling for blockquotes (decision boxes),
-// horizontal rules, headings, lists, bold/italic, and paragraphs.
-// Processes line-by-line to correctly handle blockquotes and other block elements.
+// horizontal rules, headings, lists, tables, bold/italic, and paragraphs.
+// Processes line-by-line to correctly handle all block elements.
 function markdownToHtml(md: string): string {
   // Escape HTML special characters first to prevent injection from AI-generated content.
   const escaped = md
@@ -38,6 +38,7 @@ function markdownToHtml(md: string): string {
   let pendingParagraphLines: string[] = [];
   let inBlockquote = false;
   let inList = false;
+  let tableLines: string[] = []; // Buffer for table rows
 
   const flushParagraph = () => {
     if (pendingParagraphLines.length === 0) return;
@@ -59,6 +60,49 @@ function markdownToHtml(md: string): string {
     }
   };
 
+  // Detect a Markdown table separator row: | --- | --- | or |:---|:---|
+  const isTableSep = (l: string) => /^\|[\s|:\-]+\|?$/.test(l);
+
+  const parseTableRow = (l: string, tag: "th" | "td") => {
+    const cells = l.split("|").slice(1, -1);
+    const cellsHtml = cells.map((c) => `<${tag}>${applyInlineFormatting(c.trim())}</${tag}>`).join("");
+    return `<tr>${cellsHtml}</tr>`;
+  };
+
+  const flushTable = () => {
+    if (tableLines.length === 0) return;
+    const rows = [...tableLines];
+    tableLines = [];
+
+    // Find separator row index
+    const sepIdx = rows.findIndex(isTableSep);
+
+    if (sepIdx < 0) {
+      // No separator found — not a proper table, emit as paragraphs
+      rows.forEach((l) => output.push(`<p>${applyInlineFormatting(l)}</p>`));
+      return;
+    }
+
+    output.push('<table>');
+
+    // Header rows (before separator)
+    if (sepIdx > 0) {
+      output.push('<thead>');
+      rows.slice(0, sepIdx).forEach((l) => output.push(parseTableRow(l, "th")));
+      output.push('</thead>');
+    }
+
+    // Body rows (after separator)
+    const bodyRows = rows.slice(sepIdx + 1).filter((l) => !isTableSep(l));
+    if (bodyRows.length > 0) {
+      output.push('<tbody>');
+      bodyRows.forEach((l) => output.push(parseTableRow(l, "td")));
+      output.push('</tbody>');
+    }
+
+    output.push('</table>');
+  };
+
   for (const rawLine of lines) {
     const line = rawLine.trimEnd();
     const trimmed = line.trim();
@@ -67,6 +111,7 @@ function markdownToHtml(md: string): string {
     if (!trimmed) {
       closeBlockquote();
       closeList();
+      flushTable();
       flushParagraph();
       continue;
     }
@@ -75,6 +120,7 @@ function markdownToHtml(md: string): string {
     if (trimmed === "---" || trimmed === "***" || trimmed === "___") {
       closeBlockquote();
       closeList();
+      flushTable();
       flushParagraph();
       output.push('<hr class="pv-separator"/>');
       continue;
@@ -84,6 +130,7 @@ function markdownToHtml(md: string): string {
     if (trimmed.startsWith("### ")) {
       closeBlockquote();
       closeList();
+      flushTable();
       flushParagraph();
       output.push(`<h3>${applyInlineFormatting(trimmed.slice(4))}</h3>`);
       continue;
@@ -91,6 +138,7 @@ function markdownToHtml(md: string): string {
     if (trimmed.startsWith("## ")) {
       closeBlockquote();
       closeList();
+      flushTable();
       flushParagraph();
       output.push(`<h2>${applyInlineFormatting(trimmed.slice(3))}</h2>`);
       continue;
@@ -98,6 +146,7 @@ function markdownToHtml(md: string): string {
     if (trimmed.startsWith("# ")) {
       closeBlockquote();
       closeList();
+      flushTable();
       flushParagraph();
       output.push(`<h1>${applyInlineFormatting(trimmed.slice(2))}</h1>`);
       continue;
@@ -106,6 +155,7 @@ function markdownToHtml(md: string): string {
     // --- Blockquote (decision box): lines starting with "&gt; " (escaped "> ") ---
     if (trimmed.startsWith("&gt;")) {
       closeList();
+      flushTable();
       flushParagraph();
       if (!inBlockquote) {
         output.push('<blockquote class="decision-box">');
@@ -119,9 +169,19 @@ function markdownToHtml(md: string): string {
       continue;
     }
 
+    // --- Table row: lines starting with | ---
+    if (trimmed.startsWith("|")) {
+      closeBlockquote();
+      closeList();
+      flushParagraph();
+      tableLines.push(trimmed);
+      continue;
+    }
+
     // --- List item ---
     if (trimmed.startsWith("- ")) {
       closeBlockquote();
+      flushTable();
       flushParagraph();
       if (!inList) {
         output.push("<ul>");
@@ -132,15 +192,16 @@ function markdownToHtml(md: string): string {
     }
 
     // --- Regular line: accumulate into paragraph ---
-    // If we were in a blockquote or list, close them first
     closeBlockquote();
     closeList();
+    flushTable();
     pendingParagraphLines.push(trimmed);
   }
 
   // Flush any remaining content
   closeBlockquote();
   closeList();
+  flushTable();
   flushParagraph();
 
   return output.join("\n");
@@ -301,17 +362,6 @@ function generateHtmlReport(
     text-align: justify;
   }
 
-  /* ---- SIGNATURES ---- */
-  .signature-row { display: flex; gap: 24px; justify-content: space-around; margin-top: 36px; page-break-inside: avoid; }
-  .signature-box {
-    background: #1b3a6b;
-    color: white;
-    padding: 10px 20px;
-    text-align: center;
-    min-width: 180px;
-  }
-  .signature-box .sig-title { font-weight: bold; font-size: 9.5pt; }
-  .signature-space { height: 48px; }
 </style>
 </head>
 <body>
@@ -373,17 +423,6 @@ function generateHtmlReport(
     Ce document doit être validé, complété et signé par l'instructeur désigné avant transmission à la Commission de Discipline.
   </div>
 
-  <!-- SIGNATURES -->
-  <div class="signature-row">
-    <div class="signature-box">
-      <div class="sig-title">Secrétaire de séance</div>
-      <div class="signature-space"></div>
-    </div>
-    <div class="signature-box">
-      <div class="sig-title">Instructeur désigné</div>
-      <div class="signature-space"></div>
-    </div>
-  </div>
 
 </body>
 </html>`;
