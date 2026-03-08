@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, ArrowRight } from "lucide-react";
 import heliconLogo from "@/assets/helicon-logo.png";
+import heliconLogoText from "@/assets/helicon-logo-text.svg";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
