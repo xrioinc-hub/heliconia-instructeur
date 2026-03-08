@@ -262,6 +262,15 @@ export default function Dashboard() {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant={showClos ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowClos(!showClos)}
+            className="gap-1.5 h-10"
+          >
+            {showClos ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            Clos ({counts.clos})
+          </Button>
         </div>
 
         {/* Dossiers table */}
