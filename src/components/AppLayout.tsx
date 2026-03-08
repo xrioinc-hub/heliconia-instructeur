@@ -11,18 +11,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center border-b bg-card px-4 gap-4">
+          <header className="h-14 flex items-center border-b border-border bg-card px-4 gap-4">
             <SidebarTrigger />
-            <div className="flex items-center gap-2">
-              <span className="text-lg">⚽</span>
-              <span className="font-bold text-primary">Instructeur</span>
-            </div>
             <div className="ml-auto text-right leading-tight">
-              <div className="text-sm font-medium">
+              <div className="text-sm font-medium text-foreground">
                 {profile?.prenom} {profile?.nom}
               </div>
               {(profile?.district || profile?.ligue) && (
-                <div className="text-xs text-muted-foreground truncate max-w-[240px]">
+                <div className="text-[11px] text-muted-foreground truncate max-w-[240px]">
                   {[profile?.district, profile?.ligue].filter(Boolean).join(" · ")}
                 </div>
               )}

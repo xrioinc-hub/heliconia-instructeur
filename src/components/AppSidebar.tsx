@@ -32,15 +32,19 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
-            <div className="flex items-center gap-2">
-              <img src={heliconLogo} alt="Helicon.IA" className="h-8 w-8 object-contain" />
-              {!collapsed && <span className="font-bold text-primary">Helicon.IA</span>}
+            <div className="flex items-center gap-2.5">
+              <img src={heliconLogo} alt="Helicon.IA" className="h-7 w-7 object-contain" />
+              {!collapsed && <span className="font-semibold text-sidebar-foreground text-sm tracking-tight">Helicon.IA</span>}
             </div>
           </SidebarGroupLabel>
           {!collapsed && profile && (
-            <div className="px-3 pb-2 text-xs text-muted-foreground">
-              {profile.district && <div>{profile.district}</div>}
-              {profile.ligue && <div>{profile.ligue}</div>}
+            <div className="px-3 pb-3 pt-1">
+              {profile.district && (
+                <div className="text-[11px] text-sidebar-accent-foreground/60 leading-snug">{profile.district}</div>
+              )}
+              {profile.ligue && (
+                <div className="text-[11px] text-sidebar-accent-foreground/60 leading-snug">{profile.ligue}</div>
+              )}
             </div>
           )}
           <SidebarGroupContent>
@@ -51,11 +55,11 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end={item.url === "/"}
-                      className="hover:bg-accent"
-                      activeClassName="bg-accent text-accent-foreground font-medium"
+                      className="hover:bg-sidebar-accent/60 rounded-lg transition-colors"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
                       <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && <span className="text-sm">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -69,7 +73,7 @@ export function AppSidebar() {
           variant="ghost"
           size="sm"
           onClick={signOut}
-          className="w-full justify-start text-muted-foreground hover:text-destructive"
+          className="w-full justify-start text-sidebar-foreground/60 hover:text-destructive hover:bg-sidebar-accent/40 text-xs"
         >
           <LogOut className="mr-2 h-4 w-4" />
           {!collapsed && "Déconnexion"}
