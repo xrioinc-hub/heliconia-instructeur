@@ -1,6 +1,9 @@
 import { LayoutDashboard, FilePlus, UserCircle, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
+import heliconLogo from "@/assets/helicon-logo.png";
+import heliconLogoText from "@/assets/helicon-logo-text.svg";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar,
   SidebarContent,
