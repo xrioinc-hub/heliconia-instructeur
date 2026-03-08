@@ -1,6 +1,5 @@
-import { LayoutDashboard, FolderOpen, FilePlus, UserCircle, LogOut } from "lucide-react";
+import { LayoutDashboard, FilePlus, UserCircle, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar,
@@ -26,7 +25,6 @@ const navItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
   const { profile, signOut } = useAuth();
 
   return (
