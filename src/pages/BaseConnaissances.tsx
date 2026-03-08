@@ -38,7 +38,8 @@ export default function BaseConnaissances() {
   const [source, setSource] = useState<SourceReglement>("fff");
   const [titre, setTitre] = useState("");
   const [texte, setTexte] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [indexedDocs, setIndexedDocs] = useState<IndexedDoc[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
@@ -73,38 +74,85 @@ export default function BaseConnaissances() {
     fetchIndexedDocs();
   }, []);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFile(f);
-
-    // Extract text from file
+  const extractTextFromFile = async (f: File): Promise<{ text: string; name: string }> => {
+    let text = "";
+    const name = f.name.replace(/\.(txt|pdf)$/, "");
     if (f.name.endsWith(".txt")) {
-      setTexte(await f.text());
-      if (!titre) setTitre(f.name.replace(/\.txt$/, ""));
+      text = await f.text();
     } else if (f.name.endsWith(".pdf")) {
-      try {
-        const pdfjsLib = await import("pdfjs-dist");
-        const pdfjsWorkerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
-        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
-        const arrayBuffer = await f.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-        let fullText = "";
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          const pageText = content.items.map((item: any) => item.str).join(" ");
-          fullText += pageText + "\n\n";
-        }
-        setTexte(fullText);
-        if (!titre) setTitre(f.name.replace(/\.pdf$/, ""));
-      } catch {
-        toast({ title: "Erreur", description: "Impossible d'extraire le texte du PDF", variant: "destructive" });
+      const pdfjsLib = await import("pdfjs-dist");
+      const pdfjsWorkerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
+      const arrayBuffer = await f.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map((item: any) => item.str).join(" ") + "\n\n";
       }
+    }
+    return { text, name };
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (!selectedFiles.length) return;
+    setFiles(selectedFiles);
+
+    // If single file, pre-fill text and title
+    if (selectedFiles.length === 1) {
+      try {
+        const { text, name } = await extractTextFromFile(selectedFiles[0]);
+        setTexte(text);
+        if (!titre) setTitre(name);
+      } catch {
+        toast({ title: "Erreur", description: "Impossible d'extraire le texte du fichier", variant: "destructive" });
+      }
+    } else {
+      setTexte("");
+      setTitre("");
     }
   };
 
   const handleSubmit = async () => {
+    // Multi-file mode
+    if (files.length > 1) {
+      setLoading(true);
+      let success = 0;
+      let errors = 0;
+      for (let i = 0; i < files.length; i++) {
+        setCurrentFileIndex(i);
+        try {
+          const { text, name } = await extractTextFromFile(files[i]);
+          if (!text.trim()) { errors++; continue; }
+          const { data, error } = await supabase.functions.invoke("index-reglement", {
+            body: {
+              texte: text,
+              source,
+              titre_document: name,
+              district: profile?.district || null,
+              ligue: profile?.ligue || null,
+            },
+          });
+          if (error || data?.error) { errors++; continue; }
+          success++;
+        } catch {
+          errors++;
+        }
+      }
+      toast({
+        title: "Indexation terminée",
+        description: `${success} document(s) indexé(s)${errors ? `, ${errors} erreur(s)` : ""}`,
+        variant: errors && !success ? "destructive" : "default",
+      });
+      setFiles([]);
+      setCurrentFileIndex(0);
+      fetchIndexedDocs();
+      setLoading(false);
+      return;
+    }
+
+    // Single file / text mode
     if (!texte.trim() || !titre.trim()) {
       toast({ title: "Erreur", description: "Le titre et le texte sont requis", variant: "destructive" });
       return;
@@ -121,18 +169,15 @@ export default function BaseConnaissances() {
           ligue: profile?.ligue || null,
         },
       });
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       toast({
         title: "Document indexé !",
         description: `${data.chunks_indexed} fragments ont été indexés dans la base de connaissances.`,
       });
-
       setTexte("");
       setTitre("");
-      setFile(null);
+      setFiles([]);
       fetchIndexedDocs();
     } catch (err: any) {
       toast({
@@ -207,13 +252,20 @@ export default function BaseConnaissances() {
               </div>
 
               <div>
-                <Label>Importer un fichier (PDF ou TXT)</Label>
+                <Label>Importer des fichiers (PDF ou TXT)</Label>
                 <Input
                   type="file"
                   accept=".pdf,.txt"
+                  multiple
                   onChange={handleFileChange}
                   className="cursor-pointer"
                 />
+                {files.length > 1 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {files.length} fichiers sélectionnés
+                    {loading && ` · Traitement ${currentFileIndex + 1}/${files.length}...`}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -231,16 +283,16 @@ export default function BaseConnaissances() {
                 )}
               </div>
 
-              <Button onClick={handleSubmit} disabled={loading || !texte.trim() || !titre.trim()} className="w-full">
+              <Button onClick={handleSubmit} disabled={loading || (files.length <= 1 && (!texte.trim() || !titre.trim()))} className="w-full">
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Indexation en cours...
+                    {files.length > 1 ? `Indexation ${currentFileIndex + 1}/${files.length}...` : "Indexation en cours..."}
                   </>
                 ) : (
                   <>
                     <Upload className="mr-2 h-4 w-4" />
-                    Indexer le document
+                    {files.length > 1 ? `Indexer ${files.length} documents` : "Indexer le document"}
                   </>
                 )}
               </Button>
