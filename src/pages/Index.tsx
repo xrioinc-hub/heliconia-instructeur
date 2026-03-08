@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FilePlus, FolderOpen, FileCheck, Archive, AlertTriangle, FileEdit } from "lucide-react";
+import { FilePlus, FolderOpen, FileCheck, Archive, AlertTriangle, FileEdit, RefreshCw } from "lucide-react";
 import { STATUT_LABELS, GRAVITE_LABELS, TYPE_INCIDENT_LABELS } from "@/lib/constants";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -58,48 +58,52 @@ export default function Dashboard() {
   const [filterGravite, setFilterGravite] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDossiers = useCallback(async () => {
+    if (!user) {
+      setDossiers([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from("dossiers")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (fetchError) throw fetchError;
+      setDossiers(data || []);
+    } catch (e: any) {
+      console.error("[Dashboard] Failed to fetch dossiers:", e);
+      setError(e?.message || "Erreur lors du chargement des dossiers");
+      setDossiers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
-    let isMounted = true;
+    fetchDossiers();
+  }, [fetchDossiers]);
 
-    const fetchDossiers = async () => {
-      if (!user) {
-        if (isMounted) {
-          setDossiers([]);
-          setLoading(false);
+  // Safety timeout: never stay on "Chargement..." forever
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setLoading((prev) => {
+        if (prev) {
+          console.warn("[Dashboard] Loading timeout reached, forcing end");
+          setError("Le chargement a pris trop de temps. Cliquez sur Réessayer.");
         }
-        return;
-      }
-
-      if (isMounted) setLoading(true);
-
-      try {
-        const { data, error } = await supabase
-          .from("dossiers")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        if (isMounted) {
-          setDossiers(data || []);
-        }
-      } catch (e) {
-        console.error("Failed to fetch dossiers:", e);
-        if (isMounted) {
-          setDossiers([]);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    void fetchDossiers();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.id]);
+        return false;
+      });
+    }, 8000);
+    return () => clearTimeout(timeout);
+  }, []);
 
   const filtered = dossiers.filter((d) => {
     if (filterStatut !== "all" && d.statut !== filterStatut) return false;
@@ -131,6 +135,20 @@ export default function Dashboard() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-64 text-muted-foreground">Chargement...</div>
+      </AppLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <p className="text-destructive">{error}</p>
+          <Button onClick={fetchDossiers} variant="outline" className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Réessayer
+          </Button>
+        </div>
       </AppLayout>
     );
   }
