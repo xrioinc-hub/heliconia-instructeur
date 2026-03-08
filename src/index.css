@@ -289,31 +289,32 @@
   }
 
   .pv-rapport-body h1 {
-    font-size: 13pt;
+    font-size: 12.5pt;
     font-weight: bold;
     color: #1b3a6b;
-    margin: 18px 0 8px 0;
-    page-break-after: avoid;
-  }
-
-  .pv-rapport-body h2 {
-    font-size: 12pt;
-    font-weight: bold;
-    color: #1b3a6b;
-    text-decoration: underline;
     margin: 16px 0 8px 0;
     page-break-after: avoid;
   }
 
-  .pv-rapport-body h3 {
-    font-size: 11pt;
+  .pv-rapport-body h2 {
+    font-size: 11.5pt;
     font-weight: bold;
-    margin: 12px 0 6px 0;
+    color: #1b3a6b;
+    text-decoration: underline;
+    margin: 14px 0 7px 0;
+    page-break-after: avoid;
+  }
+
+  .pv-rapport-body h3 {
+    font-size: 10.5pt;
+    font-weight: bold;
+    color: #111;
+    margin: 12px 0 5px 0;
     page-break-after: avoid;
   }
 
   .pv-rapport-body p {
-    margin-bottom: 8px;
+    margin: 0 0 7px 0;
     text-align: justify;
     orphans: 3;
     widows: 3;
@@ -325,20 +326,47 @@
 
   .pv-rapport-body em {
     font-style: italic;
+    font-size: 9.5pt;
+    color: #333;
   }
 
   .pv-rapport-body ul {
-    margin: 6px 0 10px 24px;
+    margin: 5px 0 9px 22px;
     list-style-type: disc;
   }
 
   .pv-rapport-body ol {
-    margin: 6px 0 10px 24px;
+    margin: 5px 0 9px 22px;
     list-style-type: decimal;
   }
 
   .pv-rapport-body li {
-    margin-bottom: 4px;
+    margin-bottom: 3px;
+  }
+
+  /* Séparateur horizontal --- */
+  .pv-rapport-body hr {
+    border: none;
+    border-top: 1px solid #bbb;
+    margin: 12px 0;
+  }
+
+  /* Bloc décision (blockquote) — style boîte officielle */
+  .pv-rapport-body blockquote {
+    border: 1.5px solid #1b3a6b !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: #f5f7fb !important;
+    padding: 8px 14px;
+    margin: 8px 0 14px 0;
+    page-break-inside: avoid;
+  }
+
+  .pv-rapport-body blockquote p {
+    margin: 2px 0;
+    text-align: left;
+    font-weight: bold;
+    font-size: 10.5pt;
   }
 
   .pv-rapport-body table {
