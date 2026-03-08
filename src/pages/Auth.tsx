@@ -135,15 +135,6 @@ export default function Auth() {
             </Button>
           </form>
 
-          <div className="text-center text-sm text-muted-foreground">
-            {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}{" "}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-helicon-rose font-medium hover:underline underline-offset-4"
-            >
-              {isLogin ? "S'inscrire" : "Se connecter"}
-            </button>
-          </div>
         </div>
       </div>
     </div>
