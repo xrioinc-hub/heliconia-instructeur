@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowRight } from "lucide-react";
 import heliconLogo from "@/assets/helicon-logo.png";
 
 export default function Auth() {
@@ -44,85 +44,102 @@ export default function Auth() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4"
-      style={{
-        background: "linear-gradient(135deg, hsl(150 40% 96%) 0%, hsl(150 30% 92%) 40%, hsl(150 20% 97%) 100%)",
-      }}
-    >
-      <div className="w-full max-w-md flex flex-col items-center">
-        {/* Logo */}
-        <img src={heliconLogo} alt="Helicon.IA" className="w-40 h-40 object-contain mb-4" />
-
-        {/* Title */}
-        <h1 className="text-3xl font-bold text-foreground mb-1">Espace instructeurs</h1>
-        <p className="text-muted-foreground text-sm mb-8">
-          Plateforme d'instruction disciplinaire
+    <div className="flex min-h-screen">
+      {/* Left panel — branding */}
+      <div className="hidden lg:flex lg:w-[45%] bg-sidebar flex-col justify-between p-10">
+        <div>
+          <img src={heliconLogo} alt="Helicon.IA" className="w-14 h-14 object-contain" />
+        </div>
+        <div className="space-y-4">
+          <h2 className="text-3xl font-bold text-sidebar-foreground leading-tight">
+            Instruisez vos dossiers<br />disciplinaires avec l'IA.
+          </h2>
+          <p className="text-sidebar-accent-foreground/70 text-sm max-w-sm leading-relaxed">
+            Helicon.IA automatise l'analyse des pièces, la recherche réglementaire et la rédaction des rapports d'instruction.
+          </p>
+        </div>
+        <p className="text-xs text-sidebar-accent-foreground/40">
+          © {new Date().getFullYear()} Helicon.IA — Tous droits réservés
         </p>
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="w-full space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-muted-foreground text-xs font-normal">
-              Adresse mail
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="Entrez votre email ici..."
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="h-12 rounded-full border-none bg-white/70 shadow-sm backdrop-blur-sm px-5 text-sm placeholder:text-muted-foreground/60 focus-visible:ring-primary/30"
-            />
+      {/* Right panel — form */}
+      <div className="flex-1 flex items-center justify-center px-6 bg-background">
+        <div className="w-full max-w-sm space-y-8">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex justify-center">
+            <img src={heliconLogo} alt="Helicon.IA" className="w-16 h-16 object-contain" />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-muted-foreground text-xs font-normal">
-              Mot de passe
-            </Label>
-            <div className="relative">
+
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold text-foreground tracking-tight">
+              {isLogin ? "Connexion" : "Créer un compte"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {isLogin ? "Accédez à votre espace instructeur" : "Rejoignez la plateforme Helicon.IA"}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-xs font-medium text-foreground">
+                Adresse email
+              </Label>
               <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Entrez votre mot de passe ici..."
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                id="email"
+                type="email"
+                placeholder="nom@district.fff.fr"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                minLength={6}
-                className="h-12 rounded-full border-none bg-white/70 shadow-sm backdrop-blur-sm px-5 pr-12 text-sm placeholder:text-muted-foreground/60 focus-visible:ring-primary/30"
+                className="h-11"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-              >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
             </div>
-          </div>
 
-          <div className="pt-2 flex justify-center">
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-xs font-medium text-foreground">
+                Mot de passe
+              </Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="h-11 pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
             <Button
               type="submit"
               disabled={loading}
-              className="h-12 px-12 rounded-full text-base font-medium shadow-md"
-              style={{
-                background: "hsl(150 25% 60%)",
-                color: "white",
-              }}
+              className="w-full h-11 text-sm font-medium gap-2"
             >
               {loading ? "Chargement..." : isLogin ? "Se connecter" : "S'inscrire"}
+              {!loading && <ArrowRight className="h-4 w-4" />}
             </Button>
-          </div>
-        </form>
+          </form>
 
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}{" "}
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-primary underline-offset-4 hover:underline font-medium"
-          >
-            {isLogin ? "S'inscrire" : "Se connecter"}
-          </button>
+          <div className="text-center text-sm text-muted-foreground">
+            {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}{" "}
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-primary font-medium hover:underline underline-offset-4"
+            >
+              {isLogin ? "S'inscrire" : "Se connecter"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
