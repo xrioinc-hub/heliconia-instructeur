@@ -114,29 +114,29 @@
 }
 
 @media print {
-  /* Masquer toute l'interface */
-  aside,
-  header,
-  nav,
-  [data-sidebar],
-  .no-print,
-  .print-header {
-    display: none !important;
-  }
-
-  main {
-    padding: 0 !important;
-    margin: 0 !important;
+  /* ---- NUCLEAR PRINT RESET ----
+     Masquer tout, afficher uniquement le layout d'impression */
+  body * {
+    visibility: hidden !important;
   }
 
   /* Afficher uniquement le layout PV */
   #print-layout {
     display: block !important;
+    visibility: visible !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
     font-family: Arial, Helvetica, sans-serif;
     font-size: 11pt;
     color: #111;
     line-height: 1.55;
-    background: white;
+    background: white !important;
+  }
+
+  #print-layout * {
+    visibility: visible !important;
   }
 
   @page {
@@ -410,33 +410,6 @@
     text-align: justify;
   }
 
-  /* ---- SIGNATURES ---- */
-  .pv-signature-row {
-    display: flex !important;
-    gap: 32px;
-    justify-content: space-around;
-    margin-top: 40px;
-    page-break-inside: avoid;
-  }
-
-  .pv-signature-box {
-    background: #1b3a6b !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    color: white;
-    padding: 12px 24px;
-    text-align: center;
-    min-width: 180px;
-  }
-
-  .pv-signature-title {
-    font-weight: bold;
-    font-size: 10pt;
-  }
-
-  .pv-signature-space {
-    height: 50px;
-  }
 }
 
 .print-header {
