@@ -283,16 +283,18 @@ export default function BaseConnaissances() {
                 )}
               </div>
 
-              <Button onClick={handleSubmit} disabled={loading || !texte.trim() || !titre.trim()} className="w-full">
+              <Button onClick={handleSubmit} disabled={loading || (files.length <= 1 && (!texte.trim() || !titre.trim()))} className="w-full">
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Indexation en cours...
+                    {files.length > 1 ? `Indexation ${currentFileIndex + 1}/${files.length}...` : "Indexation en cours..."}
                   </>
                 ) : (
                   <>
                     <Upload className="mr-2 h-4 w-4" />
-                    Indexer le document
+                    {files.length > 1 ? `Indexer ${files.length} documents` : "Indexer le document"}
+                  </>
+                )}
                   </>
                 )}
               </Button>
