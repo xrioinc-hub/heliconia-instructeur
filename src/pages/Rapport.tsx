@@ -52,6 +52,7 @@ export default function Rapport() {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [revising, setRevising] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 60_000);
