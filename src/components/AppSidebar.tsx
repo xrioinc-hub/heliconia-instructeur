@@ -1,6 +1,8 @@
 import { LayoutDashboard, FilePlus, UserCircle, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
+import heliconLogo from "@/assets/helicon-logo.png";
+import heliconLogoText from "@/assets/helicon-logo-text.svg";
 import {
   Sidebar,
   SidebarContent,
@@ -14,7 +16,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import heliconLogo from "@/assets/helicon-logo.png";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -31,10 +32,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>
-            <div className="flex items-center gap-2.5">
-              <img src={heliconLogo} alt="Helicon.IA" className="h-7 w-7 object-contain" />
-              {!collapsed && <span className="font-semibold text-sidebar-foreground text-sm tracking-tight">Helicon.IA</span>}
+          <SidebarGroupLabel className="h-auto py-4">
+            <div className="flex items-center gap-3">
+              <img src={heliconLogo} alt="Helicon.IA" className="h-9 w-9 object-contain" />
+              {!collapsed && <img src={heliconLogoText} alt="Helicon.IA" className="h-5 object-contain brightness-0 invert" />}
             </div>
           </SidebarGroupLabel>
           {!collapsed && profile && (
