@@ -32,8 +32,8 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="h-auto py-8">
-            <div className="flex items-center justify-center w-full">
+          <SidebarGroupLabel className="h-auto py-6 px-3">
+            <div className="flex items-center w-full">
               {collapsed
                 ? <img src={heliconLogo} alt="Helicon.IA" className="h-10 w-10 object-contain" />
                 : <img src={heliconLogoFull} alt="Helicon.IA" className="h-28 object-contain" />
