@@ -38,7 +38,8 @@ export default function BaseConnaissances() {
   const [source, setSource] = useState<SourceReglement>("fff");
   const [titre, setTitre] = useState("");
   const [texte, setTexte] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [indexedDocs, setIndexedDocs] = useState<IndexedDoc[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
