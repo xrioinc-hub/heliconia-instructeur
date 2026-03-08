@@ -74,38 +74,85 @@ export default function BaseConnaissances() {
     fetchIndexedDocs();
   }, []);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFile(f);
-
-    // Extract text from file
+  const extractTextFromFile = async (f: File): Promise<{ text: string; name: string }> => {
+    let text = "";
+    const name = f.name.replace(/\.(txt|pdf)$/, "");
     if (f.name.endsWith(".txt")) {
-      setTexte(await f.text());
-      if (!titre) setTitre(f.name.replace(/\.txt$/, ""));
+      text = await f.text();
     } else if (f.name.endsWith(".pdf")) {
-      try {
-        const pdfjsLib = await import("pdfjs-dist");
-        const pdfjsWorkerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
-        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
-        const arrayBuffer = await f.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-        let fullText = "";
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          const pageText = content.items.map((item: any) => item.str).join(" ");
-          fullText += pageText + "\n\n";
-        }
-        setTexte(fullText);
-        if (!titre) setTitre(f.name.replace(/\.pdf$/, ""));
-      } catch {
-        toast({ title: "Erreur", description: "Impossible d'extraire le texte du PDF", variant: "destructive" });
+      const pdfjsLib = await import("pdfjs-dist");
+      const pdfjsWorkerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
+      const arrayBuffer = await f.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map((item: any) => item.str).join(" ") + "\n\n";
       }
+    }
+    return { text, name };
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (!selectedFiles.length) return;
+    setFiles(selectedFiles);
+
+    // If single file, pre-fill text and title
+    if (selectedFiles.length === 1) {
+      try {
+        const { text, name } = await extractTextFromFile(selectedFiles[0]);
+        setTexte(text);
+        if (!titre) setTitre(name);
+      } catch {
+        toast({ title: "Erreur", description: "Impossible d'extraire le texte du fichier", variant: "destructive" });
+      }
+    } else {
+      setTexte("");
+      setTitre("");
     }
   };
 
   const handleSubmit = async () => {
+    // Multi-file mode
+    if (files.length > 1) {
+      setLoading(true);
+      let success = 0;
+      let errors = 0;
+      for (let i = 0; i < files.length; i++) {
+        setCurrentFileIndex(i);
+        try {
+          const { text, name } = await extractTextFromFile(files[i]);
+          if (!text.trim()) { errors++; continue; }
+          const { data, error } = await supabase.functions.invoke("index-reglement", {
+            body: {
+              texte: text,
+              source,
+              titre_document: name,
+              district: profile?.district || null,
+              ligue: profile?.ligue || null,
+            },
+          });
+          if (error || data?.error) { errors++; continue; }
+          success++;
+        } catch {
+          errors++;
+        }
+      }
+      toast({
+        title: "Indexation terminée",
+        description: `${success} document(s) indexé(s)${errors ? `, ${errors} erreur(s)` : ""}`,
+        variant: errors && !success ? "destructive" : "default",
+      });
+      setFiles([]);
+      setCurrentFileIndex(0);
+      fetchIndexedDocs();
+      setLoading(false);
+      return;
+    }
+
+    // Single file / text mode
     if (!texte.trim() || !titre.trim()) {
       toast({ title: "Erreur", description: "Le titre et le texte sont requis", variant: "destructive" });
       return;
@@ -122,18 +169,15 @@ export default function BaseConnaissances() {
           ligue: profile?.ligue || null,
         },
       });
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       toast({
         title: "Document indexé !",
         description: `${data.chunks_indexed} fragments ont été indexés dans la base de connaissances.`,
       });
-
       setTexte("");
       setTitre("");
-      setFile(null);
+      setFiles([]);
       fetchIndexedDocs();
     } catch (err: any) {
       toast({
