@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, FileDown, RefreshCw, Edit, Lock, Loader2, Clock, Eye, Pencil, Save, MessageSquare, Archive } from "lucide-react";
+import { Copy, Printer, RefreshCw, Edit, Lock, Loader2, Clock, Eye, Pencil, Save, MessageSquare, Archive } from "lucide-react";
 import { exportDossierZip } from "@/lib/exportZip";
 import { STATUT_LABELS, GRAVITE_LABELS, TYPE_INCIDENT_LABELS, TYPE_PARTIE_LABELS, TYPE_DOCUMENT_LABELS } from "@/lib/constants";
 import ReactMarkdown from "react-markdown";
@@ -77,6 +77,17 @@ export default function Rapport() {
     load();
   }, [id, user]);
 
+  // Warn the user before closing/refreshing the tab when there are unsaved changes.
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsavedChanges]);
+
   const copyReport = () => {
     if (editedRapport) {
       navigator.clipboard.writeText(editedRapport);
@@ -84,7 +95,7 @@ export default function Rapport() {
     }
   };
 
-  const exportPDF = () => {
+  const printReport = () => {
     window.print();
   };
 
@@ -234,8 +245,8 @@ export default function Rapport() {
                   <Button variant="outline" size="sm" onClick={copyReport} disabled={!editedRapport}>
                     <Copy className="mr-1 h-4 w-4" /> Copier
                   </Button>
-                  <Button variant="outline" size="sm" onClick={exportPDF} disabled={!editedRapport}>
-                    <FileDown className="mr-1 h-4 w-4" /> PDF
+                  <Button variant="outline" size="sm" onClick={printReport} disabled={!editedRapport}>
+                    <Printer className="mr-1 h-4 w-4" /> Imprimer
                   </Button>
                   <Button
                     variant="outline"
@@ -405,12 +416,13 @@ export default function Rapport() {
         </div>
       </div>
 
+      {/* Confirmation clôture */}
       <AlertDialog open={showCloseConfirm} onOpenChange={setShowCloseConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Clôturer ce dossier ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Le dossier <strong>{dossier.reference}</strong> sera marqué comme clos. Cette action ne peut pas être annulée.
+              Le dossier <strong>{dossier.reference}</strong> sera marqué comme clos. Le statut peut être modifié ultérieurement par un administrateur si nécessaire.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

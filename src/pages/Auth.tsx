@@ -54,9 +54,9 @@ export default function Auth() {
         <img src={heliconLogo} alt="Helicon.IA" className="w-40 h-40 object-contain mb-4" />
 
         {/* Title */}
-        <h1 className="text-3xl font-bold text-foreground mb-1">Espace documentaires</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-1">Espace instructeurs</h1>
         <p className="text-muted-foreground text-sm mb-8">
-          Gérez les documents de votre chatbot ici !
+          Plateforme d'instruction disciplinaire
         </p>
 
         {/* Form */}

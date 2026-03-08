@@ -149,6 +149,10 @@ export default function DossierEdit() {
   const [arbitreNom, setArbitreNom] = useState("");
   const [contexte, setContexte] = useState("");
 
+  // Track the dateMatch that was last persisted to DB, to avoid overwriting
+  // the deadline_defense on every save when the date hasn't changed.
+  const savedDateMatchRef = useRef<string>("");
+
   // Parties
   const [parties, setParties] = useState<Partie[]>([]);
   const [pendingExtractedParties, setPendingExtractedParties] = useState<Array<Record<string, unknown>>>([]);
@@ -188,6 +192,8 @@ export default function DossierEdit() {
           setArbitrePrenom(dossier.arbitre_prenom || "");
           setArbitreNom(dossier.arbitre_nom || "");
           setContexte(dossier.contexte_supplementaire || "");
+          // Track the persisted date so we don't recalculate deadline on unrelated saves.
+          savedDateMatchRef.current = dossier.date_match || "";
         }
         const { data: p } = await supabase.from("parties").select("*").eq("dossier_id", id);
         setParties(p || []);
@@ -198,15 +204,24 @@ export default function DossierEdit() {
     }
   }, [id, isNew]);
 
-  const saveDossier = async () => {
+  // `silent` avoids the "Dossier sauvegardé" toast when called programmatically
+  // (e.g. before generating a report or adding a partie).
+  const saveDossier = async (silent = false) => {
     if (!user) return null;
     setSaving(true);
 
+    // Only recalculate deadline_defense when the match date actually changed,
+    // to avoid overwriting a manually adjusted deadline on every save.
+    const dateMatchChanged = isNew || dateMatch !== savedDateMatchRef.current;
+
     // Deadline défense : fin de journée du match (23h59) + 48h calendaires
     // (approx. des 48h ouvrables réglementaires — art. Règlement Disciplinaire FFF)
-    const deadlineDefense = dateMatch
-      ? new Date(new Date(dateMatch + "T23:59:59").getTime() + 48 * 60 * 60 * 1000).toISOString()
-      : null;
+    const deadlineDefense = dateMatchChanged
+      ? (dateMatch
+          ? new Date(new Date(dateMatch + "T23:59:59").getTime() + 48 * 60 * 60 * 1000).toISOString()
+          : null)
+      : undefined; // undefined = omit from update payload
+
     // Deadline instruction : 6 semaines (42 jours) à partir de la création du dossier
     const deadlineInstruction = isNew
       ? new Date(Date.now() + 42 * 24 * 60 * 60 * 1000).toISOString()
@@ -223,7 +238,7 @@ export default function DossierEdit() {
       arbitre_prenom: arbitrePrenom,
       arbitre_nom: arbitreNom,
       contexte_supplementaire: contexte,
-      deadline_defense: deadlineDefense,
+      ...(deadlineDefense !== undefined ? { deadline_defense: deadlineDefense } : {}),
     };
     // Deadline instruction uniquement à la création
     if (deadlineInstruction !== undefined) {
@@ -275,15 +290,18 @@ export default function DossierEdit() {
       }
     }
 
+    // Update the saved date ref so subsequent saves don't recalculate needlessly.
+    savedDateMatchRef.current = dateMatch;
+
     setSaving(false);
-    toast({ title: "Dossier sauvegardé" });
+    if (!silent) toast({ title: "Dossier sauvegardé" });
     return resultId;
   };
 
   const addPartie = async () => {
     let currentId = dossierId;
     if (!currentId) {
-      currentId = await saveDossier();
+      currentId = await saveDossier(true);
       if (!currentId) return;
     }
     const { data, error } = await supabase
@@ -311,7 +329,7 @@ export default function DossierEdit() {
     if (!files || !user) return;
     let currentId = dossierId;
     if (!currentId) {
-      currentId = await saveDossier();
+      currentId = await saveDossier(true);
       if (!currentId) return;
     }
     setUploading(true);
@@ -487,17 +505,21 @@ export default function DossierEdit() {
   };
 
   const generateReport = async () => {
-    let currentId = dossierId;
-    if (!currentId) {
-      currentId = await saveDossier();
-      if (!currentId) return;
-    }
     if (documents.length === 0) {
       toast({ title: "Documents requis", description: "Ajoutez au moins un document avant de générer le rapport.", variant: "destructive" });
       return;
     }
 
     setGenerating(true);
+
+    // Always save the current form state before generating so the report is
+    // consistent with what's displayed, even if the user forgot to save manually.
+    const currentId = await saveDossier(true);
+    if (!currentId) {
+      setGenerating(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke("generate-instruction", {
         body: {
@@ -668,7 +690,7 @@ export default function DossierEdit() {
               </CardContent>
             </Card>
 
-            <Button onClick={saveDossier} disabled={saving || generating} className="w-full" variant="outline">
+            <Button onClick={() => saveDossier()} disabled={saving || generating} className="w-full" variant="outline">
               {saving ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sauvegarde...</>
               ) : (

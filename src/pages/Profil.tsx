@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
@@ -18,6 +18,20 @@ export default function Profil() {
   const [ligue, setLigue] = useState(profile?.ligue || "");
   const [poste, setPoste] = useState(profile?.poste || "instructeur");
   const [saving, setSaving] = useState(false);
+
+  // Sync local state when profile loads (useState only uses the initial value once,
+  // so if profile was null at mount, fields stay empty without this effect).
+  const profileSynced = useRef(false);
+  useEffect(() => {
+    if (profile && !profileSynced.current) {
+      profileSynced.current = true;
+      setPrenom(profile.prenom || "");
+      setNom(profile.nom || "");
+      setDistrict(profile.district || "");
+      setLigue(profile.ligue || "");
+      setPoste(profile.poste || "instructeur");
+    }
+  }, [profile]);
 
   const handleSave = async () => {
     if (!profile) return;

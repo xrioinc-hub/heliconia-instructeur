@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText, Loader2, Trash2, BookOpen } from "lucide-react";
 
@@ -45,6 +46,8 @@ export default function BaseConnaissances() {
   const [loading, setLoading] = useState(false);
   const [indexedDocs, setIndexedDocs] = useState<IndexedDoc[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
+  // Confirmation dialog for deletion
+  const [docToDelete, setDocToDelete] = useState<IndexedDoc | null>(null);
 
   const fetchIndexedDocs = async () => {
     setLoadingDocs(true);
@@ -192,19 +195,21 @@ export default function BaseConnaissances() {
     }
   };
 
-  const handleDelete = async (doc: IndexedDoc) => {
+  const confirmDelete = async () => {
+    if (!docToDelete) return;
     const { error } = await supabase
       .from("reglements")
       .delete()
-      .eq("titre_document", doc.titre)
-      .eq("source", doc.source);
+      .eq("titre_document", docToDelete.titre)
+      .eq("source", docToDelete.source);
 
     if (error) {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Supprimé", description: `"${doc.titre}" a été retiré de la base.` });
+      toast({ title: "Supprimé", description: `"${docToDelete.titre}" a été retiré de la base.` });
       fetchIndexedDocs();
     }
+    setDocToDelete(null);
   };
 
   return (
@@ -357,7 +362,7 @@ export default function BaseConnaissances() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(doc)}
+                        onClick={() => setDocToDelete(doc)}
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -370,6 +375,28 @@ export default function BaseConnaissances() {
           </Card>
         </div>
       </div>
+
+      {/* Confirmation suppression règlement */}
+      <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce document ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {docToDelete && (
+                <>
+                  <strong>"{docToDelete.titre}"</strong> ({SOURCE_LABELS[docToDelete.source]}, {docToDelete.chunks} fragment{docToDelete.chunks > 1 ? "s" : ""}) sera retiré de la base de connaissances. L'IA ne pourra plus s'appuyer sur ce règlement.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
