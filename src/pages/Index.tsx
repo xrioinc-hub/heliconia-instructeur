@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FilePlus, FolderOpen, FileCheck, Archive, AlertTriangle, FileEdit, RefreshCw } from "lucide-react";
+import { FilePlus, FolderOpen, FileCheck, Archive, AlertTriangle, FileEdit, RefreshCw, EyeOff, Eye } from "lucide-react";
 import { STATUT_LABELS, GRAVITE_LABELS, TYPE_INCIDENT_LABELS } from "@/lib/constants";
 import type { Tables } from "@/integrations/supabase/types";
 
