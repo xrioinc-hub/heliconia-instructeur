@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, FileDown, RefreshCw, Edit, Lock, Loader2, Clock, Eye, Pencil, Save, MessageSquare } from "lucide-react";
+import { Copy, FileDown, RefreshCw, Edit, Lock, Loader2, Clock, Eye, Pencil, Save, MessageSquare, Archive } from "lucide-react";
+import { exportDossierZip } from "@/lib/exportZip";
 import { STATUT_LABELS, GRAVITE_LABELS, TYPE_INCIDENT_LABELS, TYPE_PARTIE_LABELS, TYPE_DOCUMENT_LABELS } from "@/lib/constants";
 import ReactMarkdown from "react-markdown";
 import type { Tables } from "@/integrations/supabase/types";
@@ -51,6 +52,7 @@ export default function Rapport() {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [revising, setRevising] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 60_000);
@@ -234,6 +236,24 @@ export default function Rapport() {
                   </Button>
                   <Button variant="outline" size="sm" onClick={exportPDF} disabled={!editedRapport}>
                     <FileDown className="mr-1 h-4 w-4" /> PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setExporting(true);
+                      try {
+                        await exportDossierZip(dossier, parties, documents, editedRapport, profile);
+                        toast({ title: "ZIP téléchargé" });
+                      } catch (err: any) {
+                        toast({ title: "Erreur export", description: err.message, variant: "destructive" });
+                      }
+                      setExporting(false);
+                    }}
+                    disabled={exporting}
+                  >
+                    {exporting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Archive className="mr-1 h-4 w-4" />}
+                    ZIP
                   </Button>
                   <Button variant="outline" size="sm" onClick={regenerate} disabled={regenerating}>
                     {regenerating ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
