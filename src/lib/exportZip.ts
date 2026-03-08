@@ -1,4 +1,6 @@
 import JSZip from "jszip";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { TYPE_INCIDENT_LABELS, GRAVITE_LABELS, TYPE_PARTIE_LABELS, TYPE_DOCUMENT_LABELS, STATUT_LABELS } from "@/lib/constants";
 import type { Tables } from "@/integrations/supabase/types";
