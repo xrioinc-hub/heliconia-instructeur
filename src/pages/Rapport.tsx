@@ -13,6 +13,7 @@ import { Copy, Printer, RefreshCw, Edit, Lock, Loader2, Clock, Eye, Pencil, Save
 import { exportDossierZip } from "@/lib/exportZip";
 import { STATUT_LABELS, GRAVITE_LABELS, TYPE_INCIDENT_LABELS, TYPE_PARTIE_LABELS, TYPE_DOCUMENT_LABELS } from "@/lib/constants";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { Tables } from "@/integrations/supabase/types";
 import { RapportSidebar } from "@/components/rapport/RapportSidebar";
 
@@ -287,7 +288,7 @@ export default function Rapport() {
                   />
                 ) : (
                   <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <ReactMarkdown>{editedRapport}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{editedRapport}</ReactMarkdown>
                   </div>
                 )
               ) : (
@@ -392,7 +393,7 @@ export default function Rapport() {
 
         <div className="pv-rapport-body">
           {editedRapport ? (
-            <ReactMarkdown>{editedRapport}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{editedRapport}</ReactMarkdown>
           ) : (
             <p><em>Aucun rapport généré.</em></p>
           )}
@@ -404,16 +405,6 @@ export default function Rapport() {
           Ce document doit être validé, complété et signé par l'instructeur désigné avant transmission à la Commission.
         </div>
 
-        <div className="pv-signature-row">
-          <div className="pv-signature-box">
-            <div className="pv-signature-title">Secrétaire de séance</div>
-            <div className="pv-signature-space" />
-          </div>
-          <div className="pv-signature-box">
-            <div className="pv-signature-title">Instructeur désigné</div>
-            <div className="pv-signature-space" />
-          </div>
-        </div>
       </div>
 
       {/* Confirmation clôture */}
