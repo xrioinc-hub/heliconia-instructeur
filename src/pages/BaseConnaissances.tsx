@@ -252,13 +252,20 @@ export default function BaseConnaissances() {
               </div>
 
               <div>
-                <Label>Importer un fichier (PDF ou TXT)</Label>
+                <Label>Importer des fichiers (PDF ou TXT)</Label>
                 <Input
                   type="file"
                   accept=".pdf,.txt"
+                  multiple
                   onChange={handleFileChange}
                   className="cursor-pointer"
                 />
+                {files.length > 1 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {files.length} fichiers sélectionnés
+                    {loading && ` · Traitement ${currentFileIndex + 1}/${files.length}...`}
+                  </p>
+                )}
               </div>
 
               <div>
