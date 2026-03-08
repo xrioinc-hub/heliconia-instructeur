@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 
 export default function Profil() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, user } = useAuth();
   const { toast } = useToast();
   const [prenom, setPrenom] = useState(profile?.prenom || "");
   const [nom, setNom] = useState(profile?.nom || "");
@@ -19,8 +19,6 @@ export default function Profil() {
   const [poste, setPoste] = useState(profile?.poste || "instructeur");
   const [saving, setSaving] = useState(false);
 
-  // Sync local state when profile loads (useState only uses the initial value once,
-  // so if profile was null at mount, fields stay empty without this effect).
   const profileSynced = useRef(false);
   useEffect(() => {
     if (profile && !profileSynced.current) {
@@ -34,19 +32,35 @@ export default function Profil() {
   }, [profile]);
 
   const handleSave = async () => {
-    if (!profile) return;
-    setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ prenom, nom, district, ligue, poste })
-      .eq("id", profile.id);
-    if (error) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Profil mis à jour" });
-      await refreshProfile();
+    // Use user.id as fallback if profile hasn't loaded yet
+    const userId = profile?.id || user?.id;
+    if (!userId) {
+      console.error("[Profil] No user id available for save");
+      toast({ title: "Erreur", description: "Impossible de sauvegarder : profil non chargé. Rechargez la page.", variant: "destructive" });
+      return;
     }
-    setSaving(false);
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ prenom, nom, district, ligue, poste })
+        .eq("id", userId);
+
+      if (error) {
+        console.error("[Profil] Update error:", error);
+        toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      } else {
+        console.log("[Profil] Update success");
+        toast({ title: "Profil mis à jour" });
+        await refreshProfile();
+      }
+    } catch (e: any) {
+      console.error("[Profil] Exception:", e);
+      toast({ title: "Erreur", description: e?.message || "Erreur inconnue", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
