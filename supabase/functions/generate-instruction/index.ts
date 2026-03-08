@@ -281,13 +281,12 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "o4-mini",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userContent },
         ],
-        temperature: 0.2,
-        max_tokens: 6000,
+        max_completion_tokens: 6000,
       }),
     });
 
