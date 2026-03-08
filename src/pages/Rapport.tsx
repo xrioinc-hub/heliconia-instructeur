@@ -237,6 +237,24 @@ export default function Rapport() {
                   <Button variant="outline" size="sm" onClick={exportPDF} disabled={!editedRapport}>
                     <FileDown className="mr-1 h-4 w-4" /> PDF
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setExporting(true);
+                      try {
+                        await exportDossierZip(dossier, parties, documents, editedRapport, profile);
+                        toast({ title: "ZIP téléchargé" });
+                      } catch (err: any) {
+                        toast({ title: "Erreur export", description: err.message, variant: "destructive" });
+                      }
+                      setExporting(false);
+                    }}
+                    disabled={exporting}
+                  >
+                    {exporting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Archive className="mr-1 h-4 w-4" />}
+                    ZIP
+                  </Button>
                   <Button variant="outline" size="sm" onClick={regenerate} disabled={regenerating}>
                     {regenerating ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
                     Régénérer
