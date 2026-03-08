@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,18 +9,20 @@ const corsHeaders = {
 };
 
 const SYSTEM_PROMPT = `Tu es un assistant juridique expert en droit disciplinaire du football amateur français.
-Tu as précédemment rédigé un rapport d'instruction. L'instructeur désigné te donne maintenant son retour et ses décisions.
+Tu as précédemment rédigé un projet de rapport d'instruction au format officiel de procès-verbal de commission disciplinaire. L'instructeur désigné te donne maintenant son retour et ses décisions.
 
 TON RÔLE :
 - Intégrer les remarques et décisions de l'instructeur dans le rapport existant
-- Conserver la structure globale du rapport (synthèse, qualification, circonstances, sanctions, tableau)
-- Conserver les citations réglementaires exactes (articles FFF, Ligue, District)
-- Modifier les parties concernées par le feedback de l'instructeur
-- Si l'instructeur donne une décision de sanction, l'intégrer clairement dans le rapport
+- Conserver la structure officielle du rapport PV : Rappel des faits, Délibération (par partie), Décisions proposées (blocs ➢), Note de gravité
+- Conserver les citations réglementaires exactes (articles FFF, Ligue, District) avec leurs sources
+- Modifier uniquement les parties concernées par le feedback de l'instructeur
+- Si l'instructeur précise une décision de sanction (nombre de matchs, montant d'amende, date de prise d'effet), remplacer les placeholders « À COMPLÉTER PAR L'INSTRUCTEUR » par ces valeurs dans les blocs de décision
+- Conserver le format blockquote Markdown (lignes > **➢ ...**) pour les blocs de décision
+- Conserver les paragraphes en italique (*...*) pour les mentions d'effet suspensif et les voies de recours
 - Rester objectif et factuel, même en intégrant les décisions de l'instructeur
 - NE PAS supprimer d'informations factuelles existantes sauf si l'instructeur le demande explicitement
 
-FORMAT : Retourne le rapport complet révisé en Markdown, prêt à être imprimé.`;
+FORMAT : Retourne le rapport complet révisé en Markdown strict, identique au format d'origine, prêt à être imprimé.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -27,6 +30,28 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify user identity
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { rapport_actuel, feedback_instructeur } = await req.json();
 
     if (!rapport_actuel || !feedback_instructeur) {
