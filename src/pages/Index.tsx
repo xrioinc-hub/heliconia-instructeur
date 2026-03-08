@@ -28,7 +28,7 @@ function statutBadgeVariant(statut: string) {
 function statutBadgeClass(statut: string) {
   switch (statut) {
     case "en_instruction": return "bg-blue-500 text-white hover:bg-blue-600";
-    case "rapport_genere": return "bg-primary text-primary-foreground";
+    case "rapport_genere": return "bg-helicon-green text-white";
     case "clos": return "bg-foreground text-background";
     default: return "";
   }
