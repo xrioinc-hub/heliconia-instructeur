@@ -2,3 +2,6 @@ project_id = "kflysnjjabkrlgedbxnu"
 
 [functions.generate-instruction]
 verify_jwt = false
+
+[functions.revise-instruction]
+verify_jwt = false
