@@ -107,6 +107,7 @@ export default function Dashboard() {
   }, []);
 
   const filtered = dossiers.filter((d) => {
+    if (!showClos && d.statut === "clos") return false;
     if (filterStatut !== "all" && d.statut !== filterStatut) return false;
     if (filterGravite !== "all" && d.gravite !== filterGravite) return false;
     if (filterType !== "all" && d.type_incident !== filterType) return false;
