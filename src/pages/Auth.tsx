@@ -49,7 +49,10 @@ export default function Auth() {
       {/* Left panel — branding */}
       <div className="hidden lg:flex lg:w-[45%] bg-sidebar flex-col justify-between p-10">
         <div>
-          <img src={heliconLogo} alt="Helicon.IA" className="w-14 h-14 object-contain" />
+          <div className="flex items-center gap-4">
+            <img src={heliconLogo} alt="Helicon.IA" className="w-16 h-16 object-contain" />
+            <img src={heliconLogoText} alt="Helicon.IA" className="h-8 object-contain brightness-0 invert" />
+          </div>
         </div>
         <div className="space-y-4">
           <h2 className="text-3xl font-bold text-sidebar-foreground leading-tight">
