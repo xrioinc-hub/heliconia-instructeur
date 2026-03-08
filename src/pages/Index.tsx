@@ -194,7 +194,7 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Rapports générés</CardTitle>
-              <FileCheck className="h-4 w-4 text-primary" />
+              <FileCheck className="h-4 w-4 text-helicon-green" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{counts.rapports}</div>
