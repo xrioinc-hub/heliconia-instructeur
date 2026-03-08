@@ -54,6 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
+    const emergencyUnlock = window.setTimeout(() => {
+      if (!isMounted) return;
+      console.warn("Auth initialization timeout reached, forcing loading=false");
+      setLoading(false);
+    }, 5000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!isMounted) return;
@@ -83,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
       } finally {
         if (isMounted) setLoading(false);
+        window.clearTimeout(emergencyUnlock);
       }
     };
 
@@ -90,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMounted = false;
+      window.clearTimeout(emergencyUnlock);
       subscription.unsubscribe();
     };
   }, []);
