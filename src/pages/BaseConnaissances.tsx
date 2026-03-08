@@ -265,6 +265,7 @@ export default function BaseConnaissances() {
                   />
                 </div>
               )}
+              <div>
                 <Label>Titre du document</Label>
                 <Input
                   value={titre}
