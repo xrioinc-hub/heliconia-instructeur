@@ -38,6 +38,8 @@ export default function BaseConnaissances() {
   const [source, setSource] = useState<SourceReglement>("fff");
   const [titre, setTitre] = useState("");
   const [texte, setTexte] = useState("");
+  const [districtValue, setDistrictValue] = useState(profile?.district || "");
+  const [ligueValue, setLigueValue] = useState(profile?.ligue || "");
   const [files, setFiles] = useState<File[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -126,13 +128,13 @@ export default function BaseConnaissances() {
           const { text, name } = await extractTextFromFile(files[i]);
           if (!text.trim()) { errors++; continue; }
           const { data, error } = await supabase.functions.invoke("index-reglement", {
-            body: {
-              texte: text,
-              source,
-              titre_document: name,
-              district: profile?.district || null,
-              ligue: profile?.ligue || null,
-            },
+              body: {
+                texte: text,
+                source,
+                titre_document: name,
+                district: source === "district" ? (districtValue || null) : null,
+                ligue: (source === "ligue" || source === "district") ? (ligueValue || null) : null,
+              },
           });
           if (error || data?.error) { errors++; continue; }
           success++;
@@ -165,8 +167,8 @@ export default function BaseConnaissances() {
           texte,
           source,
           titre_document: titre,
-          district: profile?.district || null,
-          ligue: profile?.ligue || null,
+          district: source === "district" ? (districtValue || null) : null,
+          ligue: (source === "ligue" || source === "district") ? (ligueValue || null) : null,
         },
       });
       if (error) throw error;
@@ -242,6 +244,27 @@ export default function BaseConnaissances() {
                 </Select>
               </div>
 
+              {(source === "ligue" || source === "district") && (
+                <div>
+                  <Label>Ligue</Label>
+                  <Input
+                    value={ligueValue}
+                    onChange={(e) => setLigueValue(e.target.value)}
+                    placeholder="Ex : Ligue de Paris Île-de-France"
+                  />
+                </div>
+              )}
+
+              {source === "district" && (
+                <div>
+                  <Label>District</Label>
+                  <Input
+                    value={districtValue}
+                    onChange={(e) => setDistrictValue(e.target.value)}
+                    placeholder="Ex : District du Val d'Oise"
+                  />
+                </div>
+              )}
               <div>
                 <Label>Titre du document</Label>
                 <Input
