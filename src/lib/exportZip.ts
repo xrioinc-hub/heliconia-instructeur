@@ -145,6 +145,53 @@ function generateHtmlReport(
 </html>`;
 }
 
+async function htmlToPdfBlob(html: string): Promise<Blob> {
+  // Render HTML in a hidden container
+  const container = document.createElement("div");
+  container.style.position = "absolute";
+  container.style.left = "-9999px";
+  container.style.top = "0";
+  container.style.width = "794px"; // A4 width at 96dpi
+  container.style.background = "white";
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  // Wait for rendering
+  await new Promise((r) => setTimeout(r, 200));
+
+  const canvas = await html2canvas(container, {
+    scale: 2,
+    useCORS: true,
+    logging: false,
+    width: 794,
+    windowWidth: 794,
+  });
+
+  document.body.removeChild(container);
+
+  const imgData = canvas.toDataURL("image/jpeg", 0.95);
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = pdf.internal.pageSize.getHeight();
+  const imgWidth = pdfWidth;
+  const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+  heightLeft -= pdfHeight;
+
+  while (heightLeft > 0) {
+    position -= pdfHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pdfHeight;
+  }
+
+  return pdf.output("blob");
+}
+
 export async function exportDossierZip(
   dossier: Dossier,
   parties: Partie[],
@@ -155,9 +202,10 @@ export async function exportDossierZip(
   const zip = new JSZip();
   const ref = dossier.reference || "dossier";
 
-  // 1. HTML report
+  // 1. Generate PDF from HTML
   const html = generateHtmlReport(dossier, parties, documents, rapport, profile);
-  zip.file(`rapport-instruction-${ref}.html`, html);
+  const pdfBlob = await htmlToPdfBlob(html);
+  zip.file(`rapport-instruction-${ref}.pdf`, pdfBlob);
 
   // 2. Attachments
   const piecesJointes = zip.folder("pieces-jointes");
