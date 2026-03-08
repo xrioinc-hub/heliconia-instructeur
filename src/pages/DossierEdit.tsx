@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 // Use the locally-bundled pdfjs worker so version always matches the installed package.
 // Importing from CDN (cdnjs/unpkg) is fragile — they may not carry every patch version.
 import pdfjsWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
