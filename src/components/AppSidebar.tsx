@@ -2,7 +2,7 @@ import { LayoutDashboard, FilePlus, UserCircle, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
 import heliconLogo from "@/assets/helicon-logo.png";
-import heliconLogoText from "@/assets/helicon-logo-text.svg";
+import heliconLogoFull from "@/assets/helicon-logo-full.png";
 import {
   Sidebar,
   SidebarContent,
@@ -36,7 +36,7 @@ export function AppSidebar() {
             <div className="flex items-center justify-center w-full">
               {collapsed
                 ? <img src={heliconLogo} alt="Helicon.IA" className="h-10 w-10 object-contain" />
-                : <img src={heliconLogoText} alt="Helicon.IA" className="h-28 object-contain" />
+                : <img src={heliconLogoFull} alt="Helicon.IA" className="h-28 object-contain" />
               }
             </div>
           </SidebarGroupLabel>
