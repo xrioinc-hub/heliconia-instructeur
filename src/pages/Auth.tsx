@@ -49,7 +49,7 @@ export default function Auth() {
       {/* Left panel — branding */}
       <div className="hidden lg:flex lg:w-[45%] bg-sidebar flex-col justify-between p-10">
         <div>
-          <img src={heliconLogoText} alt="Helicon.IA" className="h-16 object-contain brightness-0 invert" />
+          <img src={heliconLogoText} alt="Helicon.IA" className="h-28 object-contain" />
         </div>
         <div className="space-y-4">
           <h2 className="text-3xl font-bold text-sidebar-foreground leading-tight">
@@ -69,7 +69,7 @@ export default function Auth() {
         <div className="w-full max-w-sm space-y-8">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center">
-            <img src={heliconLogoText} alt="Helicon.IA" className="h-12 object-contain" />
+            <img src={heliconLogoText} alt="Helicon.IA" className="h-20 object-contain" />
           </div>
 
           <div className="space-y-1">
