@@ -11,7 +11,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center border-b border-border bg-card px-4 gap-4">
+          <header className="h-14 flex items-center border-b border-border bg-card px-4 gap-4 relative overflow-hidden">
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-helicon-green via-helicon-rose/50 to-transparent" />
             <SidebarTrigger />
             <div className="ml-auto text-right leading-tight">
               <div className="text-sm font-medium text-foreground">
