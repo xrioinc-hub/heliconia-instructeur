@@ -57,6 +57,7 @@ export default function Dashboard() {
   const [filterStatut, setFilterStatut] = useState("all");
   const [filterGravite, setFilterGravite] = useState("all");
   const [filterType, setFilterType] = useState("all");
+  const [showClos, setShowClos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
