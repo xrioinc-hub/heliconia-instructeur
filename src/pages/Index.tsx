@@ -60,17 +60,46 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    let isMounted = true;
+
     const fetchDossiers = async () => {
-      const { data } = await supabase
-        .from("dossiers")
-        .select("*")
-        .order("created_at", { ascending: false });
-      setDossiers(data || []);
-      setLoading(false);
+      if (!user) {
+        if (isMounted) {
+          setDossiers([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (isMounted) setLoading(true);
+
+      try {
+        const { data, error } = await supabase
+          .from("dossiers")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        if (isMounted) {
+          setDossiers(data || []);
+        }
+      } catch (e) {
+        console.error("Failed to fetch dossiers:", e);
+        if (isMounted) {
+          setDossiers([]);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     };
-    fetchDossiers();
-  }, [user]);
+
+    void fetchDossiers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
 
   const filtered = dossiers.filter((d) => {
     if (filterStatut !== "all" && d.statut !== filterStatut) return false;
