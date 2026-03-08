@@ -28,7 +28,7 @@ function statutBadgeVariant(statut: string) {
 function statutBadgeClass(statut: string) {
   switch (statut) {
     case "en_instruction": return "bg-blue-500 text-white hover:bg-blue-600";
-    case "rapport_genere": return "bg-primary text-primary-foreground";
+    case "rapport_genere": return "bg-helicon-green text-white";
     case "clos": return "bg-foreground text-background";
     default: return "";
   }
@@ -163,7 +163,7 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">Vue d'ensemble de vos dossiers d'instruction</p>
           </div>
-          <Button asChild>
+          <Button asChild className="bg-helicon-green hover:bg-helicon-green/90">
             <Link to="/dossier/nouveau">
               <FilePlus className="mr-2 h-4 w-4" />
               Nouveau dossier
@@ -194,7 +194,7 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Rapports générés</CardTitle>
-              <FileCheck className="h-4 w-4 text-primary" />
+              <FileCheck className="h-4 w-4 text-helicon-green" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{counts.rapports}</div>

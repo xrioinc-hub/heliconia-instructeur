@@ -47,19 +47,22 @@ export default function Auth() {
   return (
     <div className="flex min-h-screen">
       {/* Left panel — branding */}
-      <div className="hidden lg:flex lg:w-[45%] bg-sidebar flex-col justify-between p-10">
-        <div>
+      <div className="hidden lg:flex lg:w-[45%] bg-gradient-to-br from-helicon-green to-helicon-green/80 flex-col justify-between p-10 relative overflow-hidden">
+        {/* Subtle rose decorative element */}
+        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-helicon-rose/15 rounded-full blur-3xl" />
+        <div className="absolute top-20 -left-10 w-40 h-40 bg-helicon-rose/10 rounded-full blur-2xl" />
+        <div className="relative z-10">
           <img src={heliconLogoFull} alt="Helicon.IA" className="h-28 object-contain" />
         </div>
-        <div className="space-y-4">
-          <h2 className="text-3xl font-bold text-sidebar-foreground leading-tight">
+        <div className="space-y-4 relative z-10">
+          <h2 className="text-3xl font-bold text-white leading-tight">
             Instruisez vos dossiers<br />disciplinaires avec l'IA.
           </h2>
-          <p className="text-sidebar-accent-foreground/70 text-sm max-w-sm leading-relaxed">
+          <p className="text-white/70 text-sm max-w-sm leading-relaxed">
             Helicon.IA automatise l'analyse des pièces, la recherche réglementaire et la rédaction des rapports d'instruction.
           </p>
         </div>
-        <p className="text-xs text-sidebar-accent-foreground/40">
+        <p className="text-xs text-white/40 relative z-10">
           © {new Date().getFullYear()} Helicon.IA — Tous droits réservés
         </p>
       </div>
@@ -125,7 +128,7 @@ export default function Auth() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-11 text-sm font-medium gap-2"
+              className="w-full h-11 text-sm font-medium gap-2 bg-helicon-green hover:bg-helicon-green/90"
             >
               {loading ? "Chargement..." : isLogin ? "Se connecter" : "S'inscrire"}
               {!loading && <ArrowRight className="h-4 w-4" />}
@@ -136,7 +139,7 @@ export default function Auth() {
             {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}{" "}
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-primary font-medium hover:underline underline-offset-4"
+              className="text-helicon-rose font-medium hover:underline underline-offset-4"
             >
               {isLogin ? "S'inscrire" : "Se connecter"}
             </button>
