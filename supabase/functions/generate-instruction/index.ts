@@ -194,10 +194,22 @@ serve(async (req) => {
     // --- RAG: Search relevant regulatory articles ---
     let ragContext = "";
     try {
-      // Build a search query from the dossier context
-      const ragQuery = `${infos_match.competition || ""} ${
-        parties?.map((p: any) => `${p.type || ""} ${p.role || ""}`).join(" ") || ""
-      } dossier disciplinaire sanctions`;
+      // Build a rich search query from the dossier context for better semantic matching
+      const queryParts = [
+        infos_match.competition || "",
+        infos_match.type_incident || "",
+        parties?.map((p: any) => `${p.type || ""} ${p.role || ""}`).join(" ") || "",
+        "dossier disciplinaire sanctions barème",
+      ];
+      // Include a snippet of document content for better matching
+      const docSnippet = sortedDocs
+        .map((d: any) => (d.contenu || "").substring(0, 300))
+        .join(" ")
+        .substring(0, 500);
+      if (docSnippet.trim()) queryParts.push(docSnippet);
+      if (contexte) queryParts.push(contexte.substring(0, 200));
+
+      const ragQuery = queryParts.filter(Boolean).join(" ").substring(0, 1000);
 
       const embResponse = await fetch("https://api.openai.com/v1/embeddings", {
         method: "POST",
@@ -222,8 +234,8 @@ serve(async (req) => {
 
         const { data: ragResults } = await supabaseAdmin.rpc("match_reglements", {
           query_embedding: JSON.stringify(queryEmbedding),
-          match_threshold: 0.65,
-          match_count: 15,
+          match_threshold: 0.55,
+          match_count: 25,
           filter_source: null,
           filter_district: district,
           filter_ligue: ligue,
