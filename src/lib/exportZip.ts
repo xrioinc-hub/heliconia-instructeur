@@ -14,7 +14,14 @@ function escapeHtml(str: string) {
 }
 
 function markdownToHtml(md: string): string {
-  return md
+  // Escape HTML special characters first to prevent injection from AI-generated content.
+  // The regex replacements below only add trusted HTML tags around escaped content.
+  const escaped = md
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  return escaped
     .replace(/^### (.+)$/gm, "<h3>$1</h3>")
     .replace(/^## (.+)$/gm, "<h2>$1</h2>")
     .replace(/^# (.+)$/gm, "<h1>$1</h1>")
