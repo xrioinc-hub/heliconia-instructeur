@@ -32,11 +32,11 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="h-auto py-5">
+          <SidebarGroupLabel className="h-auto py-6">
             <div className="flex items-center justify-center w-full">
               {collapsed
-                ? <img src={heliconLogo} alt="Helicon.IA" className="h-9 w-9 object-contain" />
-                : <img src={heliconLogoText} alt="Helicon.IA" className="h-10 object-contain brightness-0 invert" />
+                ? <img src={heliconLogo} alt="Helicon.IA" className="h-10 w-10 object-contain" />
+                : <img src={heliconLogoText} alt="Helicon.IA" className="h-14 object-contain" />
               }
             </div>
           </SidebarGroupLabel>

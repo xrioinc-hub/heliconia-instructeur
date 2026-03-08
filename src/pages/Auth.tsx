@@ -69,7 +69,7 @@ export default function Auth() {
         <div className="w-full max-w-sm space-y-8">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center">
-            <img src={heliconLogoText} alt="Helicon.IA" className="h-12 object-contain" />
+            <img src={heliconLogoText} alt="Helicon.IA" className="h-20 object-contain" />
           </div>
 
           <div className="space-y-1">
