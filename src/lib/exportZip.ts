@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
-import { TYPE_INCIDENT_LABELS, GRAVITE_LABELS, TYPE_PARTIE_LABELS, TYPE_DOCUMENT_LABELS, STATUT_LABELS } from "@/lib/constants";
+import { TYPE_PARTIE_LABELS, TYPE_DOCUMENT_LABELS } from "@/lib/constants";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Dossier = Tables<"dossiers">;
@@ -13,26 +13,137 @@ function escapeHtml(str: string) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Apply inline Markdown formatting to already-escaped text.
+// Input must already have & < > escaped.
+function applyInlineFormatting(text: string): string {
+  return text
+    // Bold (**text**)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    // Italic (*text*) — only if not already consumed by bold
+    .replace(/\*([^*]+?)\*/g, "<em>$1</em>");
+}
+
+// Converts Markdown to HTML with proper handling for blockquotes (decision boxes),
+// horizontal rules, headings, lists, bold/italic, and paragraphs.
+// Processes line-by-line to correctly handle blockquotes and other block elements.
 function markdownToHtml(md: string): string {
   // Escape HTML special characters first to prevent injection from AI-generated content.
-  // The regex replacements below only add trusted HTML tags around escaped content.
   const escaped = md
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  return escaped
-    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
-    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
-    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/^- (.+)$/gm, "<li>$1</li>")
-    .replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`)
-    .replace(/\n{2,}/g, "</p><p>")
-    .replace(/\n/g, "<br/>")
-    .replace(/^/, "<p>")
-    .replace(/$/, "</p>");
+  const lines = escaped.split("\n");
+  const output: string[] = [];
+  let pendingParagraphLines: string[] = [];
+  let inBlockquote = false;
+  let inList = false;
+
+  const flushParagraph = () => {
+    if (pendingParagraphLines.length === 0) return;
+    output.push(`<p>${applyInlineFormatting(pendingParagraphLines.join("<br/>"))}</p>`);
+    pendingParagraphLines = [];
+  };
+
+  const closeBlockquote = () => {
+    if (inBlockquote) {
+      output.push("</blockquote>");
+      inBlockquote = false;
+    }
+  };
+
+  const closeList = () => {
+    if (inList) {
+      output.push("</ul>");
+      inList = false;
+    }
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    const trimmed = line.trim();
+
+    // --- Empty line: flush everything ---
+    if (!trimmed) {
+      closeBlockquote();
+      closeList();
+      flushParagraph();
+      continue;
+    }
+
+    // --- Horizontal rule ---
+    if (trimmed === "---" || trimmed === "***" || trimmed === "___") {
+      closeBlockquote();
+      closeList();
+      flushParagraph();
+      output.push('<hr class="pv-separator"/>');
+      continue;
+    }
+
+    // --- Headings ---
+    if (trimmed.startsWith("### ")) {
+      closeBlockquote();
+      closeList();
+      flushParagraph();
+      output.push(`<h3>${applyInlineFormatting(trimmed.slice(4))}</h3>`);
+      continue;
+    }
+    if (trimmed.startsWith("## ")) {
+      closeBlockquote();
+      closeList();
+      flushParagraph();
+      output.push(`<h2>${applyInlineFormatting(trimmed.slice(3))}</h2>`);
+      continue;
+    }
+    if (trimmed.startsWith("# ")) {
+      closeBlockquote();
+      closeList();
+      flushParagraph();
+      output.push(`<h1>${applyInlineFormatting(trimmed.slice(2))}</h1>`);
+      continue;
+    }
+
+    // --- Blockquote (decision box): lines starting with "&gt; " (escaped "> ") ---
+    if (trimmed.startsWith("&gt;")) {
+      closeList();
+      flushParagraph();
+      if (!inBlockquote) {
+        output.push('<blockquote class="decision-box">');
+        inBlockquote = true;
+      }
+      // Strip the "&gt; " or "&gt;" prefix
+      const content = trimmed.startsWith("&gt; ")
+        ? trimmed.slice(5)
+        : trimmed.slice(4);
+      output.push(`<p>${applyInlineFormatting(content)}</p>`);
+      continue;
+    }
+
+    // --- List item ---
+    if (trimmed.startsWith("- ")) {
+      closeBlockquote();
+      flushParagraph();
+      if (!inList) {
+        output.push("<ul>");
+        inList = true;
+      }
+      output.push(`<li>${applyInlineFormatting(trimmed.slice(2))}</li>`);
+      continue;
+    }
+
+    // --- Regular line: accumulate into paragraph ---
+    // If we were in a blockquote or list, close them first
+    closeBlockquote();
+    closeList();
+    pendingParagraphLines.push(trimmed);
+  }
+
+  // Flush any remaining content
+  closeBlockquote();
+  closeList();
+  flushParagraph();
+
+  return output.join("\n");
 }
 
 function generateHtmlReport(
@@ -42,23 +153,24 @@ function generateHtmlReport(
   rapport: string,
   profile: { district: string | null; ligue: string | null } | null
 ): string {
+  const districtLabel = escapeHtml(profile?.district || "District");
+  const ligueLabel = profile?.ligue ? escapeHtml(profile.ligue) : "";
   const dateMatch = dossier.date_match ? new Date(dossier.date_match).toLocaleDateString("fr-FR") : "—";
   const now = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  const arbitreLabel = escapeHtml([dossier.arbitre_prenom, dossier.arbitre_nom].filter(Boolean).join(" ") || "—");
 
   const partiesHtml = parties.length
     ? parties
+        .filter((p) => p.est_mis_en_cause)
         .map(
           (p) =>
-            `<tr>
-              <td>${escapeHtml([p.prenom, p.nom].filter(Boolean).join(" "))}</td>
-              <td>${TYPE_PARTIE_LABELS[p.type_partie] || p.type_partie}</td>
-              <td>${escapeHtml(p.club || "—")}</td>
-              <td>${p.est_mis_en_cause ? "Oui" : "Non"}</td>
-              <td>${escapeHtml(p.role_dans_incident || "—")}</td>
-            </tr>`
+            `<div class="partie-line">❖ <strong>${escapeHtml([p.prenom, p.nom].filter(Boolean).join(" "))}</strong>` +
+            ` — ${TYPE_PARTIE_LABELS[p.type_partie] || p.type_partie}, club&nbsp;: ${escapeHtml(p.club || "—")}` +
+            (p.role_dans_incident ? ` — Rôle&nbsp;: ${escapeHtml(p.role_dans_incident)}` : "") +
+            `</div>`
         )
         .join("")
-    : '<tr><td colspan="5">Aucune partie</td></tr>';
+    : "<p><em>Aucune partie mise en cause.</em></p>";
 
   const docsHtml = documents.length
     ? documents
@@ -67,11 +179,10 @@ function generateHtmlReport(
             `<tr>
               <td>${escapeHtml(d.nom_fichier)}</td>
               <td>${TYPE_DOCUMENT_LABELS[d.type_document] || d.type_document}</td>
-              <td>${d.storage_path ? "✓ inclus dans le ZIP" : "—"}</td>
             </tr>`
         )
         .join("")
-    : '<tr><td colspan="3">Aucun document</td></tr>';
+    : '<tr><td colspan="2"><em>Aucun document</em></td></tr>';
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -80,74 +191,200 @@ function generateHtmlReport(
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rapport d'instruction — ${escapeHtml(dossier.reference)}</title>
 <style>
-  @page { margin: 2cm; }
-  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1a1a1a; max-width: 800px; margin: 0 auto; padding: 40px 20px; line-height: 1.6; }
-  h1 { font-size: 1.5em; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; color: #1a3a5c; }
-  h2 { font-size: 1.2em; color: #1a3a5c; margin-top: 1.5em; }
-  h3 { font-size: 1.05em; color: #333; }
-  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9em; }
-  th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; }
-  th { background: #f0f4f8; font-weight: 600; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-  .header-left { font-size: 0.85em; color: #555; }
-  .badge { display: inline-block; background: #e2e8f0; padding: 2px 10px; border-radius: 12px; font-size: 0.8em; margin: 2px 4px 2px 0; }
-  .rapport-body { margin-top: 20px; }
-  .rapport-body h1, .rapport-body h2, .rapport-body h3 { color: #1a3a5c; }
-  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ccc; font-size: 0.8em; color: #888; text-align: center; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin: 12px 0; font-size: 0.9em; }
-  .info-grid dt { font-weight: 600; color: #555; }
-  .info-grid dd { margin: 0; }
+  /* ---- PAGE ---- */
+  @page { size: A4 portrait; margin: 18mm 16mm 22mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10.5pt;
+    color: #111;
+    line-height: 1.55;
+    background: white;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* ---- EN-TÊTE ---- */
+  .doc-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .doc-header-left { font-size: 9.5pt; color: #444; }
+  .doc-header-left .district-name { font-size: 13pt; font-weight: bold; color: #111; margin-bottom: 2px; }
+  .doc-header-right { text-align: right; font-size: 9pt; color: #555; }
+  .doc-divider { height: 3px; background: #1b3a6b; margin: 6px 0 14px 0; }
+
+  /* ---- BANNIÈRE TITRE ---- */
+  .title-banner {
+    background: #1b3a6b;
+    color: white;
+    text-align: center;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    line-height: 1.7;
+  }
+  .title-banner .t1 { font-size: 11.5pt; font-weight: bold; letter-spacing: 0.5px; }
+  .title-banner .t2 { font-size: 11pt; font-weight: bold; }
+  .title-banner .t3 { font-size: 9.5pt; margin-top: 2px; opacity: 0.9; }
+
+  /* ---- BOX MATCH ---- */
+  .match-banner {
+    background: #1b3a6b;
+    color: white;
+    text-align: center;
+    padding: 9px 14px;
+    margin-bottom: 16px;
+    font-weight: bold;
+    line-height: 1.7;
+    font-size: 10.5pt;
+  }
+  .match-banner .match-teams { font-size: 11.5pt; }
+  .match-banner .match-detail { font-weight: normal; font-size: 9.5pt; }
+
+  /* ---- SECTION PARTIES ---- */
+  .parties-block {
+    border: 1px solid #bbb;
+    padding: 8px 14px;
+    margin-bottom: 14px;
+    page-break-inside: avoid;
+  }
+  .parties-block .block-title {
+    font-weight: bold;
+    text-decoration: underline;
+    margin-bottom: 6px;
+    font-size: 10.5pt;
+  }
+  .partie-line { margin-bottom: 4px; font-size: 10pt; }
+
+  /* ---- DOCUMENTS JOINTS ---- */
+  .docs-block { margin-bottom: 16px; }
+  .docs-block table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+  .docs-block th { background: #e8ecf2; font-weight: bold; padding: 5px 8px; border: 1px solid #ccc; text-align: left; }
+  .docs-block td { padding: 4px 8px; border: 1px solid #ccc; }
+
+  /* ---- CORPS DU RAPPORT ---- */
+  .rapport-body { margin-bottom: 20px; }
+  .rapport-body h1 { font-size: 12.5pt; font-weight: bold; color: #1b3a6b; margin: 16px 0 8px 0; page-break-after: avoid; }
+  .rapport-body h2 { font-size: 11.5pt; font-weight: bold; color: #1b3a6b; text-decoration: underline; margin: 14px 0 7px 0; page-break-after: avoid; }
+  .rapport-body h3 { font-size: 10.5pt; font-weight: bold; color: #111; margin: 12px 0 6px 0; page-break-after: avoid; }
+  .rapport-body p { margin: 0 0 7px 0; text-align: justify; orphans: 3; widows: 3; }
+  .rapport-body strong { font-weight: bold; }
+  .rapport-body em { font-style: italic; font-size: 9.5pt; color: #333; }
+  .rapport-body ul { margin: 5px 0 9px 22px; }
+  .rapport-body li { margin-bottom: 3px; }
+  .rapport-body hr.pv-separator { border: none; border-top: 1px solid #ccc; margin: 12px 0; }
+
+  /* ---- BLOC DÉCISION (blockquote) ---- */
+  .rapport-body blockquote.decision-box {
+    border: 1.5px solid #1b3a6b;
+    padding: 8px 14px;
+    margin: 10px 0 14px 0;
+    page-break-inside: avoid;
+    background: #f5f7fb;
+  }
+  .rapport-body blockquote.decision-box p {
+    margin: 2px 0;
+    text-align: left;
+    font-weight: bold;
+  }
+
+  /* ---- AVERTISSEMENT IA ---- */
+  .disclaimer {
+    font-size: 8.5pt;
+    color: #666;
+    font-style: italic;
+    border-top: 1px solid #ccc;
+    padding-top: 8px;
+    margin: 30px 0 20px 0;
+    text-align: justify;
+  }
+
+  /* ---- SIGNATURES ---- */
+  .signature-row { display: flex; gap: 24px; justify-content: space-around; margin-top: 36px; page-break-inside: avoid; }
+  .signature-box {
+    background: #1b3a6b;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    min-width: 180px;
+  }
+  .signature-box .sig-title { font-weight: bold; font-size: 9.5pt; }
+  .signature-space { height: 48px; }
 </style>
 </head>
 <body>
-  <div class="header">
-    <div class="header-left">
-      <strong>${escapeHtml(profile?.district || "District")}</strong><br/>
-      ${profile?.ligue ? escapeHtml(profile.ligue) + " · " : ""}Fédération Française de Football
+
+  <!-- EN-TÊTE -->
+  <div class="doc-header">
+    <div class="doc-header-left">
+      <div class="district-name">${districtLabel}</div>
+      ${ligueLabel ? `<div>${ligueLabel} · Fédération Française de Football</div>` : "<div>Fédération Française de Football</div>"}
     </div>
-    <div style="text-align:right; font-size:0.85em; color:#555;">
-      Réf. ${escapeHtml(dossier.reference)}<br/>
+    <div class="doc-header-right">
+      Réf. <strong>${escapeHtml(dossier.reference)}</strong><br/>
       Généré le ${now}
     </div>
   </div>
+  <div class="doc-divider"></div>
 
-  <h1>Rapport d'instruction — ${escapeHtml(dossier.reference)}</h1>
-
-  <h2>Informations du match</h2>
-  <div class="info-grid">
-    <dt>Date</dt><dd>${dateMatch}</dd>
-    <dt>Compétition</dt><dd>${escapeHtml(dossier.competition || "—")}</dd>
-    <dt>Équipe domicile</dt><dd>${escapeHtml(dossier.equipe_domicile || "—")}</dd>
-    <dt>Équipe extérieur</dt><dd>${escapeHtml(dossier.equipe_exterieur || "—")}</dd>
-    <dt>Score</dt><dd>${escapeHtml(dossier.score || "—")}</dd>
-    <dt>Lieu</dt><dd>${escapeHtml(dossier.lieu_match || "—")}</dd>
-    <dt>Arbitre</dt><dd>${escapeHtml([dossier.arbitre_prenom, dossier.arbitre_nom].filter(Boolean).join(" ") || "—")}</dd>
-    <dt>Type d'incident</dt><dd><span class="badge">${TYPE_INCIDENT_LABELS[dossier.type_incident] || dossier.type_incident}</span></dd>
-    <dt>Gravité</dt><dd><span class="badge">${dossier.gravite ? GRAVITE_LABELS[dossier.gravite] || dossier.gravite : "—"}</span></dd>
-    <dt>Statut</dt><dd><span class="badge">${STATUT_LABELS[dossier.statut] || dossier.statut}</span></dd>
+  <!-- TITRE -->
+  <div class="title-banner">
+    <div class="t1">${districtLabel.toUpperCase()}</div>
+    <div class="t2">COMMISSION DE DISCIPLINE ET DE L'ÉTHIQUE</div>
+    <div class="t3">PROJET DE RAPPORT D'INSTRUCTION — ${escapeHtml(dossier.reference)}</div>
   </div>
 
-  <h2>Parties impliquées</h2>
-  <table>
-    <thead><tr><th>Nom</th><th>Type</th><th>Club</th><th>Mis en cause</th><th>Rôle</th></tr></thead>
-    <tbody>${partiesHtml}</tbody>
-  </table>
+  <!-- INFO MATCH -->
+  <div class="match-banner">
+    ${dossier.date_match ? `<div>Journée du ${dateMatch}</div>` : ""}
+    ${dossier.competition ? `<div>${escapeHtml(dossier.competition)}</div>` : ""}
+    <div class="match-teams">${escapeHtml(dossier.equipe_domicile || "?")} — ${escapeHtml(dossier.equipe_exterieur || "?")}</div>
+    ${dossier.score ? `<div class="match-detail">Score : ${escapeHtml(dossier.score)}</div>` : ""}
+    ${dossier.lieu_match ? `<div class="match-detail">Lieu : ${escapeHtml(dossier.lieu_match)}</div>` : ""}
+    ${(dossier.arbitre_prenom || dossier.arbitre_nom) ? `<div class="match-detail">Arbitre : ${arbitreLabel}</div>` : ""}
+  </div>
 
-  <h2>Documents joints</h2>
-  <table>
-    <thead><tr><th>Fichier</th><th>Type</th><th>Inclus</th></tr></thead>
-    <tbody>${docsHtml}</tbody>
-  </table>
+  <!-- PARTIES MISES EN CAUSE -->
+  ${parties.filter((p) => p.est_mis_en_cause).length > 0 ? `
+  <div class="parties-block">
+    <div class="block-title">Parties mises en cause</div>
+    ${partiesHtml}
+  </div>` : ""}
 
-  <h2>Rapport d'instruction</h2>
+  <!-- DOCUMENTS JOINTS -->
+  ${documents.length > 0 ? `
+  <div class="docs-block">
+    <table>
+      <thead><tr><th>Document</th><th>Type</th></tr></thead>
+      <tbody>${docsHtml}</tbody>
+    </table>
+  </div>` : ""}
+
+  <!-- RAPPORT IA -->
   <div class="rapport-body">
     ${rapport ? markdownToHtml(rapport) : "<p><em>Aucun rapport généré.</em></p>"}
   </div>
 
-  <div class="footer">
-    Rapport d'instruction généré par intelligence artificielle le ${now}.<br/>
-    Ce document doit être validé, complété et signé par l'instructeur désigné avant transmission à la Commission.
+  <!-- AVERTISSEMENT -->
+  <div class="disclaimer">
+    Projet de rapport d'instruction généré par intelligence artificielle le ${now}.
+    Ce document doit être validé, complété et signé par l'instructeur désigné avant transmission à la Commission de Discipline.
   </div>
+
+  <!-- SIGNATURES -->
+  <div class="signature-row">
+    <div class="signature-box">
+      <div class="sig-title">Secrétaire de séance</div>
+      <div class="signature-space"></div>
+    </div>
+    <div class="signature-box">
+      <div class="sig-title">Instructeur désigné</div>
+      <div class="signature-space"></div>
+    </div>
+  </div>
+
 </body>
 </html>`;
 }
