@@ -128,7 +128,7 @@ export default function Auth() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-11 text-sm font-medium gap-2"
+              className="w-full h-11 text-sm font-medium gap-2 bg-helicon-green hover:bg-helicon-green/90"
             >
               {loading ? "Chargement..." : isLogin ? "Se connecter" : "S'inscrire"}
               {!loading && <ArrowRight className="h-4 w-4" />}
