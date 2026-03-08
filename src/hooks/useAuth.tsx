@@ -45,28 +45,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Single source of truth: onAuthStateChange fires immediately with INITIAL_SESSION,
-    // then for every subsequent auth event. Removed the redundant getSession() call
-    // which was causing a race condition (loading=false before profile was fetched)
-    // and a double profile fetch on every page refresh.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          try {
-            await fetchProfile(session.user.id);
-          } catch (e) {
-            console.error("Failed to fetch profile:", e);
-          }
-        } else {
+    let isMounted = true;
+
+    const applySessionState = async (nextSession: Session | null) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (nextSession?.user) {
+        try {
+          await fetchProfile(nextSession.user.id);
+        } catch (e) {
+          console.error("Failed to fetch profile:", e);
           setProfile(null);
         }
-        setLoading(false);
+      } else {
+        setProfile(null);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, nextSession) => {
+        if (!isMounted) return;
+        await applySessionState(nextSession);
+        if (isMounted) setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    const initializeAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (!isMounted) return;
+        await applySessionState(data.session ?? null);
+      } catch (e) {
+        console.error("Failed to initialize auth:", e);
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    void initializeAuth();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
