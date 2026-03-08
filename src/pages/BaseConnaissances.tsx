@@ -294,7 +294,7 @@ export default function BaseConnaissances() {
                     <Upload className="mr-2 h-4 w-4" />
                     {files.length > 1 ? `Indexer ${files.length} documents` : "Indexer le document"}
                   </>
-              </Button>
+                )}
               </Button>
             </CardContent>
           </Card>
