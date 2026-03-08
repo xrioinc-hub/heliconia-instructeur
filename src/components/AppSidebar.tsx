@@ -40,8 +40,6 @@ export function AppSidebar() {
               {!collapsed && <img src={heliconLogoText} alt="Helicon.IA" className="h-5 object-contain brightness-0 invert" />}
             </div>
           </SidebarGroupLabel>
-            </div>
-          </SidebarGroupLabel>
           {!collapsed && profile && (
             <div className="px-3 pb-3 pt-1">
               {profile.district && (
