@@ -163,7 +163,7 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">Vue d'ensemble de vos dossiers d'instruction</p>
           </div>
-          <Button asChild>
+          <Button asChild className="bg-helicon-green hover:bg-helicon-green/90">
             <Link to="/dossier/nouveau">
               <FilePlus className="mr-2 h-4 w-4" />
               Nouveau dossier
