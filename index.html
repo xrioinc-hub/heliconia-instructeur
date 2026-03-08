@@ -24,6 +24,11 @@
 </head>
 
   <body>
+    <script>
+      // Fallback: ensure Supabase env vars are always available in production builds
+      window.__SUPABASE_URL__ = "https://kflysnjjabkrlgedbxnu.supabase.co";
+      window.__SUPABASE_KEY__ = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmbHlzbmpqYWJrcmxnZWRieG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDE0NDIsImV4cCI6MjA4ODQ3NzQ0Mn0.GEzCFr_Mhd9RkkwmK9WOHKXce8Kui8EhKk4xyS4BRBk";
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
