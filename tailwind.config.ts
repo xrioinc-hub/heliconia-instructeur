@@ -65,6 +65,10 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        helicon: {
+          green: "hsl(var(--helicon-green))",
+          rose: "hsl(var(--helicon-rose))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
