@@ -384,8 +384,11 @@ function generateHtmlReport(
   <!-- EN-TÊTE -->
   <div class="doc-header">
     <div class="doc-header-left">
-      <div class="district-name">${districtLabel}</div>
-      ${ligueLabel ? `<div>${ligueLabel} · Fédération Française de Football</div>` : "<div>Fédération Française de Football</div>"}
+      <img src="${logoBase64}" class="doc-header-logo" alt="Logo District" />
+      <div class="doc-header-left-text">
+        <div class="district-name">${districtLabel}</div>
+        ${ligueLabel ? `<div>${ligueLabel} · Fédération Française de Football</div>` : "<div>Fédération Française de Football</div>"}
+      </div>
     </div>
     <div class="doc-header-right">
       Réf. <strong>${escapeHtml(dossier.reference)}</strong><br/>
