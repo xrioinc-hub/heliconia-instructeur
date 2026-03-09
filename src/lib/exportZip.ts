@@ -4,6 +4,18 @@ import { jsPDF } from "jspdf";
 import { supabase } from "@/lib/supabase";
 import { TYPE_PARTIE_LABELS, TYPE_DOCUMENT_LABELS } from "@/lib/constants";
 import type { Tables } from "@/integrations/supabase/types";
+import districtLyonLogo from "@/assets/district-lyon-logo.png";
+
+// Convert an image URL to a base64 data URI
+async function imageToBase64(url: string): Promise<string> {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+}
 
 type Dossier = Tables<"dossiers">;
 type Partie = Tables<"parties">;
@@ -212,7 +224,8 @@ function generateHtmlReport(
   parties: Partie[],
   documents: Document[],
   rapport: string,
-  profile: { district: string | null; ligue: string | null } | null
+  profile: { district: string | null; ligue: string | null } | null,
+  logoBase64: string
 ): string {
   const districtLabel = escapeHtml(profile?.district || "District");
   const ligueLabel = profile?.ligue ? escapeHtml(profile.ligue) : "";
@@ -272,8 +285,10 @@ function generateHtmlReport(
     justify-content: space-between;
     margin-bottom: 6px;
   }
-  .doc-header-left { font-size: 9.5pt; color: #444; }
-  .doc-header-left .district-name { font-size: 13pt; font-weight: bold; color: #111; margin-bottom: 2px; }
+  .doc-header-logo { height: 60px; width: auto; margin-right: 12px; }
+  .doc-header-left { display: flex; align-items: center; }
+  .doc-header-left-text { font-size: 9.5pt; color: #444; }
+  .doc-header-left-text .district-name { font-size: 13pt; font-weight: bold; color: #111; margin-bottom: 2px; }
   .doc-header-right { text-align: right; font-size: 9pt; color: #555; }
   .doc-divider { height: 3px; background: #1b3a6b; margin: 6px 0 14px 0; }
 
@@ -369,8 +384,11 @@ function generateHtmlReport(
   <!-- EN-TÊTE -->
   <div class="doc-header">
     <div class="doc-header-left">
-      <div class="district-name">${districtLabel}</div>
-      ${ligueLabel ? `<div>${ligueLabel} · Fédération Française de Football</div>` : "<div>Fédération Française de Football</div>"}
+      <img src="${logoBase64}" class="doc-header-logo" alt="Logo District" />
+      <div class="doc-header-left-text">
+        <div class="district-name">${districtLabel}</div>
+        ${ligueLabel ? `<div>${ligueLabel} · Fédération Française de Football</div>` : "<div>Fédération Française de Football</div>"}
+      </div>
     </div>
     <div class="doc-header-right">
       Réf. <strong>${escapeHtml(dossier.reference)}</strong><br/>
@@ -485,8 +503,11 @@ export async function exportDossierZip(
   const zip = new JSZip();
   const ref = dossier.reference || "dossier";
 
+  // 0. Convert logo to base64 for embedding in HTML
+  const logoBase64 = await imageToBase64(districtLyonLogo);
+
   // 1. Generate PDF from HTML
-  const html = generateHtmlReport(dossier, parties, documents, rapport, profile);
+  const html = generateHtmlReport(dossier, parties, documents, rapport, profile, logoBase64);
   const pdfBlob = await htmlToPdfBlob(html);
   zip.file(`rapport-instruction-${ref}.pdf`, pdfBlob);
 
