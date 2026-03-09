@@ -503,8 +503,11 @@ export async function exportDossierZip(
   const zip = new JSZip();
   const ref = dossier.reference || "dossier";
 
+  // 0. Convert logo to base64 for embedding in HTML
+  const logoBase64 = await imageToBase64(districtLyonLogo);
+
   // 1. Generate PDF from HTML
-  const html = generateHtmlReport(dossier, parties, documents, rapport, profile);
+  const html = generateHtmlReport(dossier, parties, documents, rapport, profile, logoBase64);
   const pdfBlob = await htmlToPdfBlob(html);
   zip.file(`rapport-instruction-${ref}.pdf`, pdfBlob);
 
