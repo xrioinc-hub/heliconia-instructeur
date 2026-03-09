@@ -224,7 +224,8 @@ function generateHtmlReport(
   parties: Partie[],
   documents: Document[],
   rapport: string,
-  profile: { district: string | null; ligue: string | null } | null
+  profile: { district: string | null; ligue: string | null } | null,
+  logoBase64: string
 ): string {
   const districtLabel = escapeHtml(profile?.district || "District");
   const ligueLabel = profile?.ligue ? escapeHtml(profile.ligue) : "";
