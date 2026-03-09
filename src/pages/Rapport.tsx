@@ -14,6 +14,7 @@ import { exportDossierZip } from "@/lib/exportZip";
 import { STATUT_LABELS, GRAVITE_LABELS, TYPE_INCIDENT_LABELS, TYPE_PARTIE_LABELS, TYPE_DOCUMENT_LABELS } from "@/lib/constants";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import districtLyonLogo from "@/assets/district-lyon-logo.png";
 import type { Tables } from "@/integrations/supabase/types";
 import { RapportSidebar } from "@/components/rapport/RapportSidebar";
 
