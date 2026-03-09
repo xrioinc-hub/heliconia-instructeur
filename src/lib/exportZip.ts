@@ -4,6 +4,18 @@ import { jsPDF } from "jspdf";
 import { supabase } from "@/lib/supabase";
 import { TYPE_PARTIE_LABELS, TYPE_DOCUMENT_LABELS } from "@/lib/constants";
 import type { Tables } from "@/integrations/supabase/types";
+import districtLyonLogo from "@/assets/district-lyon-logo.png";
+
+// Convert an image URL to a base64 data URI
+async function imageToBase64(url: string): Promise<string> {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+}
 
 type Dossier = Tables<"dossiers">;
 type Partie = Tables<"parties">;
