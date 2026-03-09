@@ -284,8 +284,10 @@ function generateHtmlReport(
     justify-content: space-between;
     margin-bottom: 6px;
   }
-  .doc-header-left { font-size: 9.5pt; color: #444; }
-  .doc-header-left .district-name { font-size: 13pt; font-weight: bold; color: #111; margin-bottom: 2px; }
+  .doc-header-logo { height: 60px; width: auto; margin-right: 12px; }
+  .doc-header-left { display: flex; align-items: center; }
+  .doc-header-left-text { font-size: 9.5pt; color: #444; }
+  .doc-header-left-text .district-name { font-size: 13pt; font-weight: bold; color: #111; margin-bottom: 2px; }
   .doc-header-right { text-align: right; font-size: 9pt; color: #555; }
   .doc-divider { height: 3px; background: #1b3a6b; margin: 6px 0 14px 0; }
 
