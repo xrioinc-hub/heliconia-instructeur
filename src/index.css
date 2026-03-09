@@ -162,20 +162,12 @@
     flex-shrink: 0;
   }
 
-  .pv-logo-inner {
+  .pv-logo-img {
     width: 72px;
     height: 72px;
-    background: #1b3a6b !important;
+    object-fit: contain;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-    color: white;
-    font-weight: bold;
-    font-size: 13pt;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    letter-spacing: 1px;
   }
 
   .pv-header-center {

@@ -339,11 +339,7 @@ export default function Rapport() {
       <div id="print-layout">
         <div className="pv-header">
           <div className="pv-logo-box">
-            <div className="pv-logo-inner">
-              {profile?.district
-                ? profile.district.split(" ").filter(w => w.length > 2).map(w => w[0].toUpperCase()).slice(0, 3).join("")
-                : "FFF"}
-            </div>
+            <img src={districtLyonLogo} alt="District de Lyon et du Rhône" className="pv-logo-img" />
           </div>
           <div className="pv-header-center">
             <div className="pv-district-name">{profile?.district || "District"}</div>
